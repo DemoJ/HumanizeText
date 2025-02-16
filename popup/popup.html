@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="container">
+    <h1>人话翻译器</h1>
+    
+    <div class="input-area">
+      <textarea 
+        id="sourceText" 
+        placeholder="请输入要翻译的文本..."
+        rows="5"
+      ></textarea>
+    </div>
+
+    <button id="translateBtn" class="primary-btn">翻译</button>
+
+    <div class="result-area" id="resultArea" style="display: none;">
+      <div class="result-header">
+        <span>翻译结果</span>
+        <button id="copyBtn" class="icon-btn">复制</button>
+      </div>
+      <div id="translatedText" class="result-content"></div>
+    </div>
+
+    <div class="footer">
+      <button id="settingsBtn" class="text-btn">设置</button>
+    </div>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html> 

@@ -1,0 +1,11 @@
+<svg width="128" height="128" viewBox="0 0 128 128" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <!-- 背景圆 -->
+  <circle cx="64" cy="64" r="60" fill="#4CAF50"/>
+  
+  <!-- 对话气泡 -->
+  <path d="M94 46C94 41.5817 90.4183 38 86 38H42C37.5817 38 34 41.5817 34 46V70C34 74.4183 37.5817 78 42 78H51L64 90L77 78H86C90.4183 78 94 74.4183 94 70V46Z" fill="white"/>
+  
+  <!-- 文字线条 -->
+  <rect x="44" y="52" width="40" height="4" rx="2" fill="#4CAF50"/>
+  <rect x="44" y="60" width="30" height="4" rx="2" fill="#4CAF50"/>
+</svg> 
