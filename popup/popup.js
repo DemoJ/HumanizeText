@@ -67,12 +67,13 @@ document.addEventListener('DOMContentLoaded', () => {
           translateBtn.disabled = false;
           translateBtn.textContent = '翻译';
         }
+
+        // 确保滚动到最新内容
+        translatedText.scrollIntoView({ behavior: 'smooth', block: 'end' });
       }
-      // 自动滚动到底部
-      resultArea.scrollTop = resultArea.scrollHeight;
     }
     sendResponse({ success: true });
-    return false; // 同步响应
+    return false;
   });
 
   // 复制按钮点击事件

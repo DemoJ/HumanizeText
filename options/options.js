@@ -46,7 +46,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const settings = {
       apiKey: apiKeyInput.value.trim(),
-      baseUrl: baseUrlInput.value.trim() || 'https://api.openai.com/v1/chat/completions',
+      baseUrl: baseUrlInput.value.trim() || 'https://api.deepseek.com/v1/chat/completions',
       model: modelInput.value,
       temperature: parseFloat(temperatureInput.value)
     };
@@ -63,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
   // 测试连接
   testBtn.addEventListener('click', async () => {
     const apiKey = apiKeyInput.value.trim();
-    const baseUrl = baseUrlInput.value.trim() || 'https://api.openai.com/v1/chat/completions';
+    const baseUrl = baseUrlInput.value.trim() || 'https://api.deepseek.com/v1/chat/completions';
     const model = modelInput.value;
 
     if (!apiKey) {
