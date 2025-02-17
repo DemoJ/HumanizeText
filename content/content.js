@@ -152,30 +152,58 @@ if (!document.querySelector('#translator-popup-style')) {
   document.head.appendChild(style);
 }
 
-// 修改消息监听器，确保正确处理异步响应
+// 修改消息监听器
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
   try {
     if (request.action === 'showTranslationPopup') {
-      const popup = showPopup(request.text);
+      const oldPopup = document.querySelector('.translator-popup');
+      if (oldPopup) {
+        chrome.runtime.sendMessage({ action: 'cleanup' }, () => {
+          if (chrome.runtime.lastError) {
+            // 清理请求的错误可以静默处理
+            console.log('清理请求未完成，继续处理');
+          }
+          oldPopup.remove();
+          const popup = showPopup(request.text);
+          chrome.runtime.sendMessage({ 
+            action: 'translate', 
+            text: request.text
+          });
+        });
+      } else {
+        const popup = showPopup(request.text);
+        chrome.runtime.sendMessage({ 
+          action: 'translate', 
+          text: request.text
+        });
+      }
       sendResponse({ success: true });
-      return false; // 同步响应
+      return false;
     }
     
     if (request.action === 'updateTranslation') {
       const popup = document.querySelector('.translator-popup');
       if (!popup) {
-        console.log('翻译弹窗不存在');
-        sendResponse({ success: false, error: '弹窗不存在' });
+        // 弹窗不存在是正常情况，静默处理
+        console.log('翻译弹窗不存在，可能已关闭');
+        sendResponse({ success: true });
         return false;
       }
       
       const translatedTextEl = popup.querySelector('.translated-text');
       const loadingEl = popup.querySelector('.loading');
-      const contentEl = popup.querySelector('.content'); // 获取内容容器
+      const contentEl = popup.querySelector('.content');
       
       if (translatedTextEl && loadingEl) {
         if (request.error) {
-          loadingEl.textContent = '翻译失败：' + request.error;
+          // 只显示重要错误
+          if (request.error.includes('API Key') || 
+              request.error.includes('API 请求失败') ||
+              request.error.includes('rate limit')) {
+            loadingEl.textContent = '翻译失败：' + request.error;
+          } else {
+            loadingEl.textContent = '翻译失败，请重试';
+          }
         } else {
           translatedTextEl.innerHTML = marked.parse(request.content);
           if (request.done) {
@@ -186,13 +214,14 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         }
       }
       sendResponse({ success: true });
-      return false; // 同步响应
+      return false;
     }
   } catch (error) {
+    // 只记录错误，不返回给用户
     console.error('处理消息时出错:', error);
-    sendResponse({ success: false, error: error.message });
+    sendResponse({ success: true });
   }
-  return false; // 默认同步响应
+  return false;
 });
 
 // 更新弹窗创建函数
@@ -266,8 +295,14 @@ function initializePopupEvents(popup) {
     isDragging = false;
   });
 
-  // 关闭按钮事件
-  popup.querySelector('.close-btn').addEventListener('click', () => popup.remove());
+  // 修改关闭按钮事件
+  popup.querySelector('.close-btn').addEventListener('click', () => {
+    // 发送清理请求的消息
+    chrome.runtime.sendMessage({ 
+      action: 'cleanup'
+    });
+    popup.remove();
+  });
 
   // 复制按钮事件
   popup.querySelector('.copy-btn').addEventListener('click', () => {

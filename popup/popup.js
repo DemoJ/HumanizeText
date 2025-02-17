@@ -24,6 +24,20 @@ document.addEventListener('DOMContentLoaded', () => {
   const copyBtn = document.getElementById('copyBtn');
   const settingsBtn = document.getElementById('settingsBtn');
 
+  // 添加一个标志来追踪 popup 是否已关闭
+  let isPopupActive = true;
+  
+  // 监听 popup 关闭事件
+  window.addEventListener('unload', () => {
+    isPopupActive = false;
+    // 发送清理请求
+    chrome.runtime.sendMessage({ action: 'cleanup' }, () => {
+      if (chrome.runtime.lastError) {
+        console.log('清理请求未完成');
+      }
+    });
+  });
+
   // 翻译按钮点击事件
   translateBtn.addEventListener('click', async () => {
     const text = sourceText.value.trim();
@@ -38,38 +52,67 @@ document.addEventListener('DOMContentLoaded', () => {
     translatedText.innerHTML = '';
 
     try {
-      // 发送翻译请求
-      chrome.runtime.sendMessage(
-        { 
-          action: 'translate', 
-          text,
-          source: 'popup'
+      // 先发送清理请求，忽略可能的连接错误
+      try {
+        await new Promise(resolve => {
+          chrome.runtime.sendMessage({ action: 'cleanup' }, () => {
+            if (chrome.runtime.lastError) {
+              console.log('清理请求未完成，继续处理');
+            }
+            resolve();
+          });
+        });
+      } catch (error) {
+        console.log('清理请求发送失败，继续处理');
+      }
+
+      // 开始新的翻译，忽略可能的连接错误
+      chrome.runtime.sendMessage({ 
+        action: 'translate', 
+        text,
+        source: 'popup'
+      }, () => {
+        if (chrome.runtime.lastError) {
+          console.log('翻译请求发送完成');
         }
-      );
+      });
     } catch (error) {
-      translateBtn.disabled = false;
-      translateBtn.textContent = '翻译';
-      alert('发生错误：' + error.message);
+      // 只处理真正的错误
+      if (!error.message.includes('Receiving end does not exist')) {
+        translateBtn.disabled = false;
+        translateBtn.textContent = '翻译';
+        alert('发生错误：' + error.message);
+      }
     }
   });
 
-  // 监听翻译更新
+  // 修改翻译更新监听器
   chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+    // 如果 popup 已关闭，不处理消息
+    if (!isPopupActive) {
+      sendResponse({ success: false });
+      return false;
+    }
+
     if (request.action === 'updateTranslation') {
       if (request.error) {
         translatedText.innerHTML = `<p class="error">翻译失败：${request.error}</p>`;
         translateBtn.disabled = false;
         translateBtn.textContent = '翻译';
       } else {
-        translatedText.innerHTML = marked.parse(request.content);
-        
-        if (request.done) {
-          translateBtn.disabled = false;
-          translateBtn.textContent = '翻译';
-        }
+        try {
+          translatedText.innerHTML = marked.parse(request.content);
+          
+          if (request.done) {
+            translateBtn.disabled = false;
+            translateBtn.textContent = '翻译';
+          }
 
-        // 确保滚动到最新内容
-        translatedText.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          // 确保滚动到最新内容
+          translatedText.scrollIntoView({ behavior: 'smooth', block: 'end' });
+        } catch (error) {
+          console.log('popup 可能已关闭');
+        }
       }
     }
     sendResponse({ success: true });
