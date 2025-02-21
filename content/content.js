@@ -19,7 +19,7 @@ if (!document.querySelector('#translator-popup-style')) {
       cursor: default; /* 设置默认光标 */
     }
 
-    .translator-popup .header {
+    .translator-popup .translator-header {
       position: sticky;
       top: 0;
       z-index: 1;
@@ -34,22 +34,22 @@ if (!document.querySelector('#translator-popup-style')) {
       user-select: none;
     }
 
-    .translator-popup .header:active {
+    .translator-popup .translator-header:active {
       cursor: grabbing;
     }
 
-    .translator-popup .title {
+    .translator-popup .translator-title {
       font-weight: bold;
       color: #333;
     }
 
-    .translator-popup .close-btn {
+    .translator-popup .translator-close-btn {
       cursor: pointer;
       padding: 4px;
       color: #666;
     }
 
-    .translator-popup .content {
+    .translator-popup .translator-content {
       flex: 1;
       overflow-y: auto;
       padding: 16px;
@@ -58,60 +58,60 @@ if (!document.querySelector('#translator-popup-style')) {
       cursor: auto; /* 内容区域使用默认文本光标 */
     }
 
-    .translator-popup .section {
+    .translator-popup .translator-section {
       margin-bottom: 12px;
     }
 
-    .translator-popup .section:last-child {
+    .translator-popup .translator-section:last-child {
       margin-bottom: 0;
       padding-bottom: 40px; /* 为底部按钮留出空间 */
     }
 
-    .translator-popup .label {
+    .translator-popup .translator-label {
       font-size: 12px;
       color: #666;
       margin-bottom: 4px;
     }
 
-    .translator-popup .text {
+    .translator-popup .translator-text {
       color: #333;
       line-height: 1.5;
       overflow-wrap: break-word;
     }
 
     /* Markdown 样式 */
-    .translator-popup .text p {
+    .translator-popup .translator-text p {
       margin: 0.5em 0;
     }
 
-    .translator-popup .text code {
+    .translator-popup .translator-text code {
       background: #f5f5f5;
       padding: 0.2em 0.4em;
       border-radius: 3px;
       font-size: 0.9em;
     }
 
-    .translator-popup .text pre {
+    .translator-popup .translator-text pre {
       background: #f5f5f5;
       padding: 1em;
       border-radius: 6px;
       overflow-x: auto;
     }
 
-    .translator-popup .text blockquote {
+    .translator-popup .translator-text blockquote {
       margin: 0.5em 0;
       padding-left: 1em;
       border-left: 4px solid #ddd;
       color: #666;
     }
 
-    .translator-popup .loading {
+    .translator-popup .translator-loading {
       display: inline-block;
       margin-left: 8px;
       color: #666;
     }
 
-    .translator-popup .copy-btn {
+    .translator-popup .translator-copy-btn {
       position: sticky;
       bottom: 0;
       left: 0;
@@ -126,26 +126,26 @@ if (!document.querySelector('#translator-popup-style')) {
       margin-top: auto;
     }
 
-    .translator-popup .copy-btn:hover {
+    .translator-popup .translator-copy-btn:hover {
       background: #45a049;
     }
 
     /* 美化滚动条 */
-    .translator-popup .content::-webkit-scrollbar {
+    .translator-popup .translator-content::-webkit-scrollbar {
       width: 8px;
     }
 
-    .translator-popup .content::-webkit-scrollbar-track {
+    .translator-popup .translator-content::-webkit-scrollbar-track {
       background: #f1f1f1;
       border-radius: 4px;
     }
 
-    .translator-popup .content::-webkit-scrollbar-thumb {
+    .translator-popup .translator-content::-webkit-scrollbar-thumb {
       background: #888;
       border-radius: 4px;
     }
 
-    .translator-popup .content::-webkit-scrollbar-thumb:hover {
+    .translator-popup .translator-content::-webkit-scrollbar-thumb:hover {
       background: #666;
     }
   `; // 确保正确闭合模板字符串
@@ -190,9 +190,9 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         return false;
       }
       
-      const translatedTextEl = popup.querySelector('.translated-text');
-      const loadingEl = popup.querySelector('.loading');
-      const contentEl = popup.querySelector('.content');
+      const translatedTextEl = popup.querySelector('.translator-translated-text');
+      const loadingEl = popup.querySelector('.translator-loading');
+      const contentEl = popup.querySelector('.translator-content');
       
       if (translatedTextEl && loadingEl) {
         if (request.error) {
@@ -233,22 +233,22 @@ function showPopup(selection) {
   const popup = document.createElement('div');
   popup.className = 'translator-popup';
   popup.innerHTML = `
-    <div class="header">
-      <div class="title">人话翻译器</div>
-      <div class="close-btn">✕</div>
+    <div class="translator-header">
+      <div class="translator-title">人话翻译器</div>
+      <div class="translator-close-btn">✕</div>
     </div>
-    <div class="content">
-      <div class="section">
-        <div class="label">原文</div>
-        <div class="text">${selection}</div>
+    <div class="translator-content">
+      <div class="translator-section">
+        <div class="translator-label">原文</div>
+        <div class="translator-text">${selection}</div>
       </div>
-      <div class="section">
-        <div class="label">译文</div>
-        <div class="translated-text"></div>
-        <div class="loading">正在翻译...</div>
+      <div class="translator-section">
+        <div class="translator-label">译文</div>
+        <div class="translator-translated-text"></div>
+        <div class="translator-loading">正在翻译...</div>
       </div>
     </div>
-    <button class="copy-btn">复制译文</button>
+    <button class="translator-copy-btn">复制译文</button>
   `;
 
   // 修改弹窗位置为右上角
@@ -270,7 +270,7 @@ function showPopup(selection) {
 // 抽取弹窗事件初始化逻辑
 function initializePopupEvents(popup) {
   // 使弹窗可拖动
-  const header = popup.querySelector('.header');
+  const header = popup.querySelector('.translator-header');
   let isDragging = false;
   let startX, startY, initialX, initialY;
 
@@ -296,7 +296,7 @@ function initializePopupEvents(popup) {
   });
 
   // 修改关闭按钮事件
-  popup.querySelector('.close-btn').addEventListener('click', () => {
+  popup.querySelector('.translator-close-btn').addEventListener('click', () => {
     // 发送清理请求的消息
     chrome.runtime.sendMessage({ 
       action: 'cleanup'
@@ -305,11 +305,11 @@ function initializePopupEvents(popup) {
   });
 
   // 复制按钮事件
-  popup.querySelector('.copy-btn').addEventListener('click', () => {
-    const translatedText = popup.querySelector('.translated-text').textContent;
+  popup.querySelector('.translator-copy-btn').addEventListener('click', () => {
+    const translatedText = popup.querySelector('.translator-translated-text').textContent;
     navigator.clipboard.writeText(translatedText)
       .then(() => {
-        const copyBtn = popup.querySelector('.copy-btn');
+        const copyBtn = popup.querySelector('.translator-copy-btn');
         copyBtn.textContent = '已复制';
         setTimeout(() => copyBtn.textContent = '复制译文', 1500);
       })
@@ -360,7 +360,7 @@ function handleTranslation(selection) {
       (response) => {
         if (chrome.runtime.lastError) {
           console.error('发送翻译请求失败:', chrome.runtime.lastError);
-          const loadingEl = popup.querySelector('.loading');
+          const loadingEl = popup.querySelector('.translator-loading');
           if (loadingEl) {
             loadingEl.textContent = '翻译请求失败，请重试';
           }
