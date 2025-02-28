@@ -15,8 +15,8 @@ if (!document.querySelector('#translator-popup-style')) {
       max-width: 400px;
       min-width: 300px;
       font-family: system-ui, -apple-system, sans-serif;
-      max-height: 80vh; /* 限制最大高度 */
-      cursor: default; /* 设置默认光标 */
+      max-height: 80vh;
+      cursor: default;
     }
 
     .translator-popup .translator-header {
@@ -30,7 +30,7 @@ if (!document.querySelector('#translator-popup-style')) {
       background: white;
       border-bottom: 1px solid #eee;
       border-radius: 8px 8px 0 0;
-      cursor: grab; /* 只在标题栏显示抓取光标 */
+      cursor: grab;
       user-select: none;
     }
 
@@ -53,24 +53,28 @@ if (!document.querySelector('#translator-popup-style')) {
       flex: 1;
       overflow-y: auto;
       padding: 16px;
-      scroll-behavior: smooth; /* 添加平滑滚动效果 */
-      max-height: calc(80vh - 100px); /* 减去头部和底部的高度 */
-      cursor: auto; /* 内容区域使用默认文本光标 */
+      scroll-behavior: smooth;
+      max-height: calc(80vh - 100px);
+      cursor: auto;
     }
 
     .translator-popup .translator-section {
       margin-bottom: 12px;
+      padding: 12px;
+      border-radius: 6px;
+      background: #fff;
     }
 
     .translator-popup .translator-section:last-child {
       margin-bottom: 0;
-      padding-bottom: 40px; /* 为底部按钮留出空间 */
+      padding-bottom: 40px;
     }
 
     .translator-popup .translator-label {
       font-size: 12px;
       color: #666;
-      margin-bottom: 4px;
+      margin-bottom: 8px;
+      font-weight: 500;
     }
 
     .translator-popup .translator-text {
@@ -79,26 +83,52 @@ if (!document.querySelector('#translator-popup-style')) {
       overflow-wrap: break-word;
     }
 
+    .translator-popup .translator-reasoning-text {
+      color: #666;
+      line-height: 1.5;
+      overflow-wrap: break-word;
+      font-size: 0.95em;
+      background: #f8f9fa;
+      padding: 12px;
+      border-radius: 4px;
+      border-left: 3px solid #6c757d;
+    }
+
+    .translator-popup .translator-translated-text {
+      color: #333;
+      line-height: 1.5;
+      overflow-wrap: break-word;
+      font-weight: 500;
+    }
+
     /* Markdown 样式 */
-    .translator-popup .translator-text p {
+    .translator-popup .translator-text p,
+    .translator-popup .translator-reasoning-text p,
+    .translator-popup .translator-translated-text p {
       margin: 0.5em 0;
     }
 
-    .translator-popup .translator-text code {
+    .translator-popup .translator-text code,
+    .translator-popup .translator-reasoning-text code,
+    .translator-popup .translator-translated-text code {
       background: #f5f5f5;
       padding: 0.2em 0.4em;
       border-radius: 3px;
       font-size: 0.9em;
     }
 
-    .translator-popup .translator-text pre {
+    .translator-popup .translator-text pre,
+    .translator-popup .translator-reasoning-text pre,
+    .translator-popup .translator-translated-text pre {
       background: #f5f5f5;
       padding: 1em;
       border-radius: 6px;
       overflow-x: auto;
     }
 
-    .translator-popup .translator-text blockquote {
+    .translator-popup .translator-text blockquote,
+    .translator-popup .translator-reasoning-text blockquote,
+    .translator-popup .translator-translated-text blockquote {
       margin: 0.5em 0;
       padding-left: 1em;
       border-left: 4px solid #ddd;
@@ -184,19 +214,19 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
     if (request.action === 'updateTranslation') {
       const popup = document.querySelector('.translator-popup');
       if (!popup) {
-        // 弹窗不存在是正常情况，静默处理
         console.log('翻译弹窗不存在，可能已关闭');
         sendResponse({ success: true });
         return false;
       }
       
       const translatedTextEl = popup.querySelector('.translator-translated-text');
+      const reasoningSectionEl = popup.querySelector('.translator-section-reasoning');
+      const reasoningTextEl = popup.querySelector('.translator-reasoning-text');
       const loadingEl = popup.querySelector('.translator-loading');
       const contentEl = popup.querySelector('.translator-content');
       
-      if (translatedTextEl && loadingEl) {
+      if (translatedTextEl && reasoningTextEl && loadingEl) {
         if (request.error) {
-          // 只显示重要错误
           if (request.error.includes('API Key') || 
               request.error.includes('API 请求失败') ||
               request.error.includes('rate limit')) {
@@ -206,11 +236,22 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           }
         } else {
           translatedTextEl.innerHTML = marked.parse(request.content);
+          
+          if (reasoningSectionEl) {
+            reasoningSectionEl.style.display = request.hasReasoning ? 'block' : 'none';
+            if (request.hasReasoning && request.reasoningContent) {
+              reasoningTextEl.innerHTML = marked.parse(request.reasoningContent);
+            }
+          }
+          
           if (request.done) {
             loadingEl.style.display = 'none';
           }
-          // 自动滚动到底部
-          contentEl.scrollTop = contentEl.scrollHeight;
+
+          // 只在用户未主动滚动时自动滚动到底部
+          if (!popup.userHasScrolled()) {
+            contentEl.scrollTop = contentEl.scrollHeight;
+          }
         }
       }
       sendResponse({ success: true });
@@ -242,6 +283,10 @@ function showPopup(selection) {
         <div class="translator-label">原文</div>
         <div class="translator-text">${selection}</div>
       </div>
+      <div class="translator-section translator-section-reasoning" style="display: none;">
+        <div class="translator-label">思维链</div>
+        <div class="translator-reasoning-text"></div>
+      </div>
       <div class="translator-section">
         <div class="translator-label">译文</div>
         <div class="translator-translated-text"></div>
@@ -263,6 +308,23 @@ function showPopup(selection) {
 
   // 添加事件监听器
   initializePopupEvents(popup);
+
+  // 添加滚动检测
+  const contentEl = popup.querySelector('.translator-content');
+  let userHasScrolled = false;
+  let scrollTimeout;
+
+  contentEl.addEventListener('scroll', () => {
+    userHasScrolled = true;
+    // 如果用户停止滚动5秒后，重置标志
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      userHasScrolled = false;
+    }, 5000);
+  });
+
+  // 将滚动状态添加到popup对象上
+  popup.userHasScrolled = () => userHasScrolled;
 
   return popup;
 }

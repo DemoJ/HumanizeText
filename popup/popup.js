@@ -21,8 +21,21 @@ document.addEventListener('DOMContentLoaded', () => {
   const translateBtn = document.getElementById('translateBtn');
   const resultArea = document.getElementById('resultArea');
   const translatedText = document.getElementById('translatedText');
+  const reasoningText = document.getElementById('reasoningText');
   const copyBtn = document.getElementById('copyBtn');
   const settingsBtn = document.getElementById('settingsBtn');
+
+  // 添加滚动检测
+  let userHasScrolled = false;
+  let scrollTimeout;
+  resultArea.addEventListener('scroll', () => {
+    userHasScrolled = true;
+    // 如果用户停止滚动5秒后，重置标志
+    clearTimeout(scrollTimeout);
+    scrollTimeout = setTimeout(() => {
+      userHasScrolled = false;
+    }, 5000);
+  });
 
   // 添加一个标志来追踪 popup 是否已关闭
   let isPopupActive = true;
@@ -50,6 +63,8 @@ document.addEventListener('DOMContentLoaded', () => {
     translateBtn.textContent = '翻译中...';
     resultArea.style.display = 'block';
     translatedText.innerHTML = '';
+    reasoningText.innerHTML = '';
+    userHasScrolled = false; // 重置滚动标志
 
     try {
       // 先发送清理请求，忽略可能的连接错误
@@ -103,13 +118,24 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
           translatedText.innerHTML = marked.parse(request.content);
           
+          // 获取思维链区域元素
+          const reasoningSection = document.querySelector('.result-section-reasoning');
+          if (reasoningSection) {
+            reasoningSection.style.display = request.hasReasoning ? 'block' : 'none';
+            if (request.hasReasoning && request.reasoningContent) {
+              reasoningText.innerHTML = marked.parse(request.reasoningContent);
+            }
+          }
+          
           if (request.done) {
             translateBtn.disabled = false;
             translateBtn.textContent = '翻译';
           }
 
-          // 确保滚动到最新内容
-          translatedText.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          // 只在用户未主动滚动时自动滚动到底部
+          if (!userHasScrolled) {
+            translatedText.scrollIntoView({ behavior: 'smooth', block: 'end' });
+          }
         } catch (error) {
           console.log('popup 可能已关闭');
         }

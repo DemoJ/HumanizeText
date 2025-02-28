@@ -56,6 +56,7 @@ async function translateText(text, tabId) {
     const decoder = new TextDecoder();
     let buffer = '';
     let result = '';
+    let reasoningContent = ''; // 添加思维链内容的变量
 
     while (true) {
       const { value, done } = await reader.read();
@@ -67,6 +68,7 @@ async function translateText(text, tabId) {
       buffer = lines.pop() || '';
 
       let currentChunk = '';
+      let currentReasoningChunk = ''; // 添加当前思维链内容块
       for (const line of lines) {
         if (line.startsWith('data: ')) {
           const data = line.slice(6);
@@ -75,8 +77,13 @@ async function translateText(text, tabId) {
           try {
             const parsed = JSON.parse(data);
             const content = parsed.choices[0].delta.content;
+            const hasReasoning = 'reasoning_content' in parsed.choices[0].delta;
+            const reasoning = hasReasoning ? parsed.choices[0].delta.reasoning_content : null;
             if (content) {
               currentChunk += content;
+            }
+            if (reasoning) {
+              currentReasoningChunk += reasoning;
             }
           } catch (e) {
             console.error('解析错误:', e);
@@ -84,13 +91,16 @@ async function translateText(text, tabId) {
         }
       }
 
-      if (currentChunk) {
+      if (currentChunk || currentReasoningChunk) {
         result += currentChunk;
+        reasoningContent += currentReasoningChunk;
         if (tabId) {
           // 右键菜单翻译使用 safeSendMessage
           await safeSendMessage(tabId, {
             action: 'updateTranslation',
             content: result,
+            hasReasoning: reasoningContent.length > 0,
+            reasoningContent: reasoningContent,
             done: false
           });
         } else {
@@ -99,6 +109,8 @@ async function translateText(text, tabId) {
           chrome.runtime.sendMessage({
             action: 'updateTranslation',
             content: result,
+            hasReasoning: reasoningContent.length > 0,
+            reasoningContent: reasoningContent,
             done: false
           }, () => {
             if (chrome.runtime.lastError) {
@@ -120,6 +132,8 @@ async function translateText(text, tabId) {
       await safeSendMessage(tabId, {
         action: 'updateTranslation',
         content: result,
+        hasReasoning: reasoningContent.length > 0,
+        reasoningContent: reasoningContent,
         done: true
       });
     } else {
@@ -127,6 +141,8 @@ async function translateText(text, tabId) {
       chrome.runtime.sendMessage({
         action: 'updateTranslation',
         content: result,
+        hasReasoning: reasoningContent.length > 0,
+        reasoningContent: reasoningContent,
         done: true
       }, () => {
         if (chrome.runtime.lastError) {
