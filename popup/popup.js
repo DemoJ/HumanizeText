@@ -27,14 +27,15 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // 添加滚动检测
   let userHasScrolled = false;
-  let scrollTimeout;
   resultArea.addEventListener('scroll', () => {
-    userHasScrolled = true;
-    // 如果用户停止滚动5秒后，重置标志
-    clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
+    // 检查是否是用户主动滚动
+    // 如果滚动条不在底部，说明是用户主动滚动
+    const isAtBottom = resultArea.scrollHeight - resultArea.scrollTop <= resultArea.clientHeight + 1;
+    if (!isAtBottom) {
+      userHasScrolled = true;
+    } else {
       userHasScrolled = false;
-    }, 5000);
+    }
   });
 
   // 添加一个标志来追踪 popup 是否已关闭
@@ -134,7 +135,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
           // 只在用户未主动滚动时自动滚动到底部
           if (!userHasScrolled) {
-            translatedText.scrollIntoView({ behavior: 'smooth', block: 'end' });
+            resultArea.scrollTop = resultArea.scrollHeight;
           }
         } catch (error) {
           console.log('popup 可能已关闭');

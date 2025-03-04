@@ -312,15 +312,16 @@ function showPopup(selection) {
   // 添加滚动检测
   const contentEl = popup.querySelector('.translator-content');
   let userHasScrolled = false;
-  let scrollTimeout;
 
   contentEl.addEventListener('scroll', () => {
-    userHasScrolled = true;
-    // 如果用户停止滚动5秒后，重置标志
-    clearTimeout(scrollTimeout);
-    scrollTimeout = setTimeout(() => {
+    // 检查是否是用户主动滚动
+    // 如果滚动条不在底部，说明是用户主动滚动
+    const isAtBottom = contentEl.scrollHeight - contentEl.scrollTop <= contentEl.clientHeight + 1;
+    if (!isAtBottom) {
+      userHasScrolled = true;
+    } else {
       userHasScrolled = false;
-    }, 5000);
+    }
   });
 
   // 将滚动状态添加到popup对象上
