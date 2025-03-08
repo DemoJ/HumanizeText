@@ -10,6 +10,63 @@ chrome.runtime.onInstalled.addListener(() => {
 // 添加一个 Map 来跟踪每个标签页的请求状态
 const activeRequests = new Map();
 
+// 默认设置
+const defaultSettings = {
+  baseUrl: 'https://api.deepseek.com/v1/chat/completions',
+  model: 'deepseek-reasoner',
+  temperature: 0.7
+};
+
+// 获取设置，优先从云端获取，失败时从本地获取
+async function getSettings() {
+  try {
+    // 尝试从云端获取设置
+    const syncSettings = await chrome.storage.sync.get(['apiKey', 'baseUrl', 'model', 'temperature']);
+    
+    // 如果成功获取到云端设置，同时保存到本地作为备份
+    if (Object.keys(syncSettings).length > 0) {
+      try {
+        await chrome.storage.local.set(syncSettings);
+        console.log('设置已同步到本地存储');
+      } catch (error) {
+        console.error('保存设置到本地存储失败:', error);
+      }
+      return syncSettings;
+    }
+    
+    // 如果云端没有设置，尝试从本地获取
+    console.log('云端没有设置，尝试从本地获取');
+    const localSettings = await chrome.storage.local.get(['apiKey', 'baseUrl', 'model', 'temperature']);
+    
+    if (Object.keys(localSettings).length > 0) {
+      console.log('使用本地存储的设置');
+      return localSettings;
+    }
+    
+    // 如果本地也没有，返回默认设置
+    console.log('使用默认设置');
+    return { ...defaultSettings };
+  } catch (error) {
+    console.error('获取云端设置失败，尝试从本地获取:', error);
+    
+    try {
+      // 尝试从本地获取设置
+      const localSettings = await chrome.storage.local.get(['apiKey', 'baseUrl', 'model', 'temperature']);
+      
+      if (Object.keys(localSettings).length > 0) {
+        console.log('使用本地存储的设置');
+        return localSettings;
+      }
+    } catch (localError) {
+      console.error('获取本地设置也失败:', localError);
+    }
+    
+    // 如果都失败了，返回默认设置
+    console.log('使用默认设置');
+    return { ...defaultSettings };
+  }
+}
+
 // 修改 translateText 函数
 async function translateText(text, tabId) {
   // 如果存在旧的请求，则中止它
@@ -23,26 +80,27 @@ async function translateText(text, tabId) {
   const controller = new AbortController();
   activeRequests.set(tabId, controller);
 
-  const config = await chrome.storage.sync.get(['apiKey', 'baseUrl', 'model', 'temperature']);
+  // 获取设置，优先从云端获取，失败时从本地获取
+  const config = await getSettings();
   
   if (!config.apiKey) {
     throw new Error('请先在设置中配置 API Key');
   }
 
   try {
-    const response = await fetch(config.baseUrl || 'https://api.deepseek.com/v1/chat/completions', {
+    const response = await fetch(config.baseUrl || defaultSettings.baseUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'Authorization': `Bearer ${config.apiKey}`
       },
       body: JSON.stringify({
-        model: config.model || 'deepseek-reasoner',
+        model: config.model || defaultSettings.model,
         messages: [{
           role: 'user',
           content: `用通俗易懂的中文解释以下内容：\n\n${text}`
         }],
-        temperature: config.temperature || 0.7,
+        temperature: config.temperature || defaultSettings.temperature,
         stream: true
       }),
       signal: controller.signal // 添加 signal 以支持中止请求
