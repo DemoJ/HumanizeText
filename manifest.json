@@ -1,11 +1,7 @@
 {
   "manifest_version": 3,
   "name": "人话翻译器",
-<<<<<<< HEAD
-  "version": "1.2.1",
-=======
   "version": "1.2.2",
->>>>>>> a0c978d5d53c2130a66f58f579b38ee5198b3bb8
   "description": "将专业术语翻译成通俗易懂的人话",
   "permissions": [
     "contextMenus",
