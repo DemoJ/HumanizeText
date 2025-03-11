@@ -126,4 +126,13 @@ input[type="range"] {
 
 .icon-btn:hover {
   text-decoration: underline;
+}
+
+.status-message {
+  margin-top: 10px;
+  padding: 8px;
+  border-radius: 4px;
+  font-size: 14px;
+  text-align: center;
+  transition: all 0.3s ease;
 } 
