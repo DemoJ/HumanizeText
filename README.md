@@ -2,7 +2,11 @@
 
 ## 项目简介
 
-人话翻译器是一个 Chrome 浏览器扩展，旨在帮助用户快速翻译网页上的文本内容。它提供了一个美观、可拖动的弹窗界面，支持实时翻译和复制功能。
+人话翻译器是一个 Chrome 浏览器扩展，旨在帮助用户快速翻译网页上的文本内容。它提供了一个美观、可拖动的弹窗界面，支持实时翻译和复制功能。  
+目前已上架主流浏览器插件市场，搜索「人话翻译器」或点击以下链接前往，欢迎下载使用。
+Chrome浏览器：[chrome应用商店](https://chromewebstore.google.com/detail/genddacnaonloeecodkncflhpcdbcmdh)
+Edge浏览器：[Edge插件市场](https://microsoftedge.microsoft.com/addons/detail/%E4%BA%BA%E8%AF%9D%E7%BF%BB%E8%AF%91%E5%99%A8/nfcgnclfgdeocdakoconadlbonnjaglj)
+火狐浏览器：[火狐插件市场](https://addons.mozilla.org/zh-CN/firefox/addon/%E4%BA%BA%E8%AF%9D%E7%BF%BB%E8%AF%91%E5%99%A8/)
 
 ## 主要功能
 
