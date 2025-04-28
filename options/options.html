@@ -1,23 +1,21 @@
 <!DOCTYPE html>
 <html>
+
 <head>
   <meta charset="UTF-8">
   <title>人话翻译器 - 设置</title>
   <link rel="stylesheet" href="options.css">
 </head>
+
 <body>
   <div class="container">
     <h1>设置</h1>
-    
+
     <form id="settingsForm">
       <div class="form-group">
         <label for="apiKey">API 密钥</label>
         <div class="input-group">
-          <input 
-            type="password" 
-            id="apiKey" 
-            placeholder="请输入 API Key"
-          >
+          <input type="password" id="apiKey" placeholder="请输入 API Key">
           <button type="button" id="toggleApiKey" class="icon-btn">显示</button>
         </div>
         <div class="help-text">在 DeepSeek 官网获取 API Key</div>
@@ -25,39 +23,45 @@
 
       <div class="form-group">
         <label for="baseUrl">API 地址</label>
-        <input 
-          type="url" 
-          id="baseUrl" 
-          placeholder="https://api.deepseek.com/v1/chat/completions"
-        >
+        <input type="url" id="baseUrl" placeholder="https://api.deepseek.com/v1/chat/completions">
         <div class="help-text">默认使用与 OpenAI 兼容的 API 格式</div>
       </div>
 
       <div class="form-group">
         <label for="model">模型选择</label>
-        <input 
-          type="text" 
-          id="model" 
-          value="deepseek-reasoner"
-          placeholder="请输入模型名称"
-        >
+        <input type="text" id="model" value="deepseek-reasoner" placeholder="请输入模型名称">
         <div class="help-text">默认使用 deepseek-r1 模型</div>
       </div>
 
       <div class="form-group">
         <label for="temperature">随机性（Temperature）</label>
         <div class="range-group">
-          <input 
-            type="range" 
-            id="temperature" 
-            min="0" 
-            max="2" 
-            step="0.1" 
-            value="0.7"
-          >
+          <input type="range" id="temperature" min="0" max="2" step="0.1" value="0.7">
           <span id="temperatureValue">0.7</span>
         </div>
         <div class="help-text">值越大，回答越随机创新；值越小，回答越确定精准</div>
+      </div>
+
+      <!-- 添加提示词模板设置 -->
+      <div class="form-group">
+        <label for="promptTemplate">提示词模板</label>
+        <textarea id="promptTemplate" rows="4" placeholder="用通俗易懂的中文解释以下内容：&#10;&#10;{text}"></textarea>
+        <div class="form-description">
+          使用 {text} 作为文本占位符，将自动替换为需要翻译的内容。
+        </div>
+      </div>
+
+      <!-- 添加模板预设选择 -->
+      <div class="form-group">
+        <label>快速选择模板</label>
+        <div class="template-presets">
+          <button type="button" class="preset-btn" data-template="用通俗易懂的中文解释以下内容：&#10;&#10;{text}">通俗解释</button>
+          <button type="button" class="preset-btn" data-template="请将以下专业术语翻译成小学生也能理解的语言：&#10;&#10;{text}">小学生版</button>
+          <button type="button" class="preset-btn"
+            data-template="假设你是一位专业的文档翻译专家，请将下面的内容翻译成中文，保留原文的意思和专业术语：&#10;&#10;{text}">文档翻译</button>
+          <button type="button" class="preset-btn"
+            data-template="作为AI助手，请用简洁易懂的中文解释下面的技术概念，包含通俗的例子：&#10;&#10;{text}">技术解释</button>
+        </div>
       </div>
 
       <div class="button-group">
@@ -68,4 +72,5 @@
   </div>
   <script src="options.js"></script>
 </body>
-</html> 
+
+</html>
