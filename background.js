@@ -1,10 +1,91 @@
 // 创建右键菜单
 chrome.runtime.onInstalled.addListener(() => {
-  chrome.contextMenus.create({
-    id: "translateSelection",
-    title: "翻译成人话",
-    contexts: ["selection"]
+  // 初始化快捷键信息到存储
+  saveCurrentShortcut();
+  
+  // 创建右键菜单
+  createContextMenu();
+});
+
+// 保存当前快捷键到存储
+async function saveCurrentShortcut() {
+  try {
+    const commands = await chrome.commands.getAll();
+    const translateCommand = commands.find(command => command.name === 'translate-selection');
+    const shortcut = translateCommand && translateCommand.shortcut ? translateCommand.shortcut : '';
+    
+    // 保存到本地存储
+    chrome.storage.local.set({ 'saved_shortcut': shortcut }, () => {
+      console.log('当前快捷键已保存到存储:', shortcut);
+    });
+  } catch (error) {
+    console.error('保存快捷键信息失败:', error);
+  }
+}
+
+// 监听扩展安装或更新事件，创建右键菜单
+chrome.runtime.onStartup.addListener(() => {
+  // 创建右键菜单
+  createContextMenu();
+});
+
+// 监听快捷键变化事件（Chrome 92+支持）
+if (chrome.commands && chrome.commands.onChanged) {
+  chrome.commands.onChanged.addListener((command) => {
+    if (command === 'translate-selection') {
+      console.log('快捷键已变更，正在保存和更新');
+      saveCurrentShortcut();
+      createContextMenu();
+    }
   });
+}
+
+// 简化的创建菜单函数
+function createContextMenu() {
+  try {
+    // 先移除现有菜单
+    chrome.contextMenus.removeAll(() => {
+      // 从存储中获取快捷键
+      chrome.storage.local.get('saved_shortcut', (data) => {
+        const shortcut = data.saved_shortcut ? ` (${data.saved_shortcut})` : '';
+        
+        // 创建新菜单，包含快捷键提示
+        chrome.contextMenus.create({
+          id: "translateSelection",
+          title: `翻译成人话${shortcut}`,
+          contexts: ["selection"]
+        }, () => {
+          // 检查是否创建成功
+          if (chrome.runtime.lastError) {
+            console.error('创建菜单出错:', chrome.runtime.lastError);
+          } else {
+            console.log('右键菜单已创建，使用存储的快捷键:', shortcut);
+          }
+        });
+      });
+    });
+  } catch (error) {
+    console.error('创建右键菜单时出错:', error);
+    
+    // 出错时创建不带快捷键的菜单作为备用
+    chrome.contextMenus.create({
+      id: "translateSelection",
+      title: "翻译成人话",
+      contexts: ["selection"]
+    });
+  }
+}
+
+// 在浏览器外部修改快捷键后，重新加载扩展时更新右键菜单
+// 这是为了处理在chrome://extensions/shortcuts页面修改快捷键的情况
+chrome.management.onEnabled.addListener((extensionInfo) => {
+  if (extensionInfo.id === chrome.runtime.id) {
+    // 重新保存当前快捷键并更新菜单
+    setTimeout(() => {
+      saveCurrentShortcut();
+      createContextMenu();
+    }, 500);
+  }
 });
 
 // 添加一个 Map 来跟踪每个标签页的请求状态
@@ -22,7 +103,7 @@ const defaultSettings = {
 async function getSettings() {
   try {
     // 尝试从云端获取设置
-    const syncSettings = await chrome.storage.sync.get(['apiKey', 'baseUrl', 'model', 'temperature']);
+    const syncSettings = await chrome.storage.sync.get(['apiKey', 'baseUrl', 'model', 'temperature', 'promptTemplate']);
 
     // 如果成功获取到云端设置，同时保存到本地作为备份
     if (Object.keys(syncSettings).length > 0) {
@@ -37,7 +118,7 @@ async function getSettings() {
 
     // 如果云端没有设置，尝试从本地获取
     console.log('云端没有设置，尝试从本地获取');
-    const localSettings = await chrome.storage.local.get(['apiKey', 'baseUrl', 'model', 'temperature']);
+    const localSettings = await chrome.storage.local.get(['apiKey', 'baseUrl', 'model', 'temperature', 'promptTemplate']);
 
     if (Object.keys(localSettings).length > 0) {
       console.log('使用本地存储的设置');
@@ -52,7 +133,7 @@ async function getSettings() {
 
     try {
       // 尝试从本地获取设置
-      const localSettings = await chrome.storage.local.get(['apiKey', 'baseUrl', 'model', 'temperature']);
+      const localSettings = await chrome.storage.local.get(['apiKey', 'baseUrl', 'model', 'temperature', 'promptTemplate']);
 
       if (Object.keys(localSettings).length > 0) {
         console.log('使用本地存储的设置');
@@ -390,6 +471,24 @@ chrome.contextMenus.onClicked.addListener(async (info, tab) => {
 
 // 修改消息监听器
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  // 处理options页面发来的快捷键更改消息
+  if (request.action === 'shortcutChanged') {
+    console.log(`快捷键已从"${request.oldShortcut}"变更为"${request.newShortcut}"`);
+    
+    // 保存新快捷键到存储
+    chrome.storage.local.set({ 'saved_shortcut': request.newShortcut }, () => {
+      console.log('新快捷键已保存到存储:', request.newShortcut);
+      
+      // 更新右键菜单
+      createContextMenu();
+      
+      // 返回成功响应
+      sendResponse({ success: true });
+    });
+    
+    return true; // 保持消息通道开放以支持异步响应
+  }
+
   if (request.action === 'getHistory') {
     getTranslationHistory()
       .then(history => sendResponse({ success: true, history }))
@@ -526,3 +625,84 @@ async function cleanupRequest(tabId) {
 chrome.tabs.onRemoved.addListener((tabId) => {
   cleanupRequest(tabId);
 });
+
+// 监听快捷键命令
+chrome.commands.onCommand.addListener((command) => {
+  if (command === "translate-selection") {
+    console.log('快捷键命令被触发:', command);
+    executeTranslation();
+  }
+});
+
+// 快捷键翻译功能执行函数
+async function executeTranslation() {
+  try {
+    // 获取当前活动标签页
+    const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+    if (!tab) {
+      console.error('找不到活动标签页');
+      return;
+    }
+
+    // 检查URL是否支持
+    if (!tab.url || !tab.url.startsWith('http')) {
+      console.error('不支持在此协议页面使用快捷键翻译功能');
+      return;
+    }
+
+    console.log('正在获取选中文本...');
+    
+    // 获取页面上的选中文本
+    let selectedText = '';
+    try {
+      const [result] = await chrome.scripting.executeScript({
+        target: { tabId: tab.id },
+        function: () => window.getSelection().toString().trim()
+      });
+      selectedText = result.result;
+    } catch (error) {
+      console.error('获取选中文本失败:', error);
+      return;
+    }
+
+    if (!selectedText) {
+      console.log('没有选中文本');
+      return;
+    }
+
+    console.log('选中文本:', selectedText.substring(0, 50) + (selectedText.length > 50 ? '...' : ''));
+
+    // 尝试发送消息给content script显示翻译弹窗
+    try {
+      console.log('尝试发送翻译请求到content script...');
+      await chrome.tabs.sendMessage(tab.id, {
+        action: 'showTranslationPopup',
+        text: selectedText
+      });
+    } catch (error) {
+      console.log('第一次发送失败，尝试注入content script:', error);
+      
+      // 如果消息发送失败，可能是因为content script还未注入，尝试注入
+      try {
+        await chrome.scripting.executeScript({
+          target: { tabId: tab.id },
+          files: ['content/content.js']
+        });
+  
+        // 注入后等待短暂时间确保脚本加载
+        await new Promise(resolve => setTimeout(resolve, 300));
+  
+        // 重试发送消息
+        console.log('注入成功，重试发送消息...');
+        await chrome.tabs.sendMessage(tab.id, {
+          action: 'showTranslationPopup',
+          text: selectedText
+        });
+      } catch (injectionError) {
+        console.error('注入content script失败:', injectionError);
+      }
+    }
+  } catch (error) {
+    console.error('快捷键翻译执行错误:', error);
+  }
+}

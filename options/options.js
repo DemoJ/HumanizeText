@@ -10,6 +10,9 @@ document.addEventListener('DOMContentLoaded', () => {
   // 添加之前缺少的DOM元素引用
   const promptTemplateInput = document.getElementById('promptTemplate');
   const presetBtns = document.querySelectorAll('.preset-btn');
+  // 快捷键相关元素
+  const currentShortcut = document.getElementById('currentShortcut');
+  const changeShortcutBtn = document.getElementById('changeShortcut');
 
   const statusMessage = document.createElement('div');
   statusMessage.className = 'status-message';
@@ -32,6 +35,8 @@ document.addEventListener('DOMContentLoaded', () => {
       if (Object.keys(syncSettings).length > 0) {
         applySettings(syncSettings);
         console.log('从云端加载设置成功');
+        // 加载当前的快捷键信息
+        loadShortcutInfo();
         return;
       }
 
@@ -42,12 +47,16 @@ document.addEventListener('DOMContentLoaded', () => {
       if (Object.keys(localSettings).length > 0) {
         applySettings(localSettings);
         console.log('从本地加载设置成功');
+        // 加载当前的快捷键信息
+        loadShortcutInfo();
         return;
       }
 
       // 如果本地也没有，使用默认设置
       applySettings(defaultSettings);
       console.log('使用默认设置');
+      // 加载当前的快捷键信息
+      loadShortcutInfo();
     } catch (error) {
       console.error('从云端加载设置失败，尝试从本地获取:', error);
 
@@ -58,6 +67,8 @@ document.addEventListener('DOMContentLoaded', () => {
         if (Object.keys(localSettings).length > 0) {
           applySettings(localSettings);
           console.log('从本地加载设置成功');
+          // 加载当前的快捷键信息
+          loadShortcutInfo();
           return;
         }
       } catch (localError) {
@@ -67,6 +78,22 @@ document.addEventListener('DOMContentLoaded', () => {
       // 如果都失败了，使用默认设置
       applySettings(defaultSettings);
       console.log('使用默认设置');
+      // 加载当前的快捷键信息
+      loadShortcutInfo();
+    }
+  }
+
+  // 加载当前快捷键信息
+  async function loadShortcutInfo() {
+    try {
+      // 获取当前快捷键配置
+      const commands = await chrome.commands.getAll();
+      const translateCommand = commands.find(command => command.name === 'translate-selection');
+      if (translateCommand && translateCommand.shortcut && currentShortcut) {
+        currentShortcut.textContent = translateCommand.shortcut;
+      }
+    } catch (error) {
+      console.error('获取快捷键信息失败:', error);
     }
   }
 
@@ -114,6 +141,96 @@ document.addEventListener('DOMContentLoaded', () => {
       });
     });
   }
+
+  // 修改快捷键按钮
+  if (changeShortcutBtn) {
+    changeShortcutBtn.addEventListener('click', () => {
+      // 打开chrome://extensions/shortcuts 页面
+      chrome.tabs.create({
+        url: 'chrome://extensions/shortcuts'
+      });
+      
+      // 显示提示消息
+      const statusMessage = document.createElement('div');
+      statusMessage.className = 'status-message';
+      statusMessage.id = 'shortcut_status_message';
+      statusMessage.textContent = '修改快捷键后，请切换回此标签页，系统将自动检测并更新';
+      statusMessage.style.color = 'orange';
+      statusMessage.style.marginTop = '10px';
+      
+      // 防止重复添加提示
+      const existingMessage = document.querySelector('#shortcut_status_message');
+      if (existingMessage) {
+        existingMessage.textContent = statusMessage.textContent;
+        existingMessage.style.color = statusMessage.style.color;
+      } else {
+        const shortcutBox = document.getElementById('shortcutInfo');
+        if (shortcutBox) {
+          shortcutBox.parentNode.appendChild(statusMessage);
+        } else {
+          form.appendChild(statusMessage);
+        }
+      }
+    });
+  }
+
+  // 添加窗口获焦时检查快捷键更新
+  window.addEventListener('focus', () => {
+    // 当窗口重新获得焦点时，检查快捷键是否更新
+    console.log('检查快捷键是否已更新');
+    
+    // 重新获取当前快捷键
+    chrome.commands.getAll(async (commands) => {
+      const translateCommand = commands.find(command => command.name === 'translate-selection');
+      const currentShortcut = translateCommand && translateCommand.shortcut ? translateCommand.shortcut : '';
+      
+      // 从存储中获取上次保存的快捷键
+      chrome.storage.local.get('saved_shortcut', (data) => {
+        const savedShortcut = data.saved_shortcut || '';
+        console.log('当前快捷键:', currentShortcut, '保存的快捷键:', savedShortcut);
+        
+        // 快捷键有变化时更新
+        if (currentShortcut !== savedShortcut) {
+          console.log('检测到快捷键变化，保存并通知更新');
+          
+          // 保存新快捷键
+          chrome.storage.local.set({ 'saved_shortcut': currentShortcut }, () => {
+            // 通知background更新右键菜单
+            chrome.runtime.sendMessage({ 
+              action: 'shortcutChanged',
+              oldShortcut: savedShortcut,
+              newShortcut: currentShortcut
+            }, response => {
+              if (response && response.success) {
+                // 更新成功
+                console.log('右键菜单已更新');
+                
+                // 更新页面显示的快捷键
+                const currentShortcutEl = document.getElementById('currentShortcut');
+                if (currentShortcutEl) {
+                  currentShortcutEl.textContent = currentShortcut || '无';
+                }
+                
+                // 更新状态消息
+                const statusMessage = document.querySelector('#shortcut_status_message');
+                if (statusMessage) {
+                  statusMessage.textContent = '快捷键已更新，右键菜单已刷新';
+                  statusMessage.style.color = 'green';
+                  
+                  // 5秒后隐藏消息
+                  setTimeout(() => {
+                    if (statusMessage.parentNode) {
+                      statusMessage.parentNode.removeChild(statusMessage);
+                    }
+                  }, 5000);
+                }
+              }
+            });
+          });
+        }
+      });
+    });
+  });
 
   // 保存设置
   form.addEventListener('submit', async (e) => {

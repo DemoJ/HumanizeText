@@ -1,13 +1,14 @@
 {
   "manifest_version": 3,
   "name": "人话翻译器",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "将专业术语翻译成通俗易懂的人话",
   "permissions": [
     "contextMenus",
     "storage",
     "scripting",
-    "activeTab"
+    "activeTab",
+    "management"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -40,6 +41,14 @@
   "browser_specific_settings": {
     "gecko": {
       "id": "HumanTranslate@diyun.site"
+    }
+  },
+  "commands": {
+    "translate-selection": {
+      "suggested_key": {
+        "default": "Alt+H"
+      },
+      "description": "翻译选中的文本"
     }
   }
 } 

@@ -182,18 +182,49 @@ if (!document.querySelector('#translator-popup-style')) {
   document.head.appendChild(style);
 }
 
+// 添加简易的Markdown解析器
+const simpleMD = {
+  parse: (text) => {
+    if (!text) return '';
+    return text
+      .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
+      .replace(/`([^`]+)`/g, '<code>$1</code>')
+      .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
+      .replace(/\*([^*]+)\*/g, '<em>$1</em>')
+      .replace(/^\> (.+)$/gm, '<blockquote>$1</blockquote>')
+      .replace(/^### (.+)$/gm, '<h3>$1</h3>')
+      .replace(/^## (.+)$/gm, '<h2>$1</h2>')
+      .replace(/^# (.+)$/gm, '<h1>$1</h1>')
+      .replace(/^- (.+)$/gm, '<li>$1</li>')
+      .replace(/<li>(.+)<\/li>/g, '<ul><li>$1</li></ul>')
+      .replace(/<\/ul>\s*<ul>/g, '')
+      .replace(/\n\n/g, '</p><p>')
+      .replace(/<\/p><p>$/, '</p>')
+      .replace(/^(.+)$/gm, function(m) {
+        if (/<\/(h1|h2|h3|ul|li|blockquote|code|pre)>/.test(m)) return m;
+        if (/<(h1|h2|h3|ul|li|blockquote|code|pre)/.test(m)) return m;
+        if (/<\/p><p>/.test(m)) return m;
+        if (/^<p>/.test(m)) return m;
+        return '<p>' + m + '</p>';
+      });
+  }
+};
+
 // 修改消息监听器
 chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
+  console.log('Content script收到消息:', request.action);
   try {
     if (request.action === 'showTranslationPopup') {
       const oldPopup = document.querySelector('.translator-popup');
       if (oldPopup) {
+        console.log('发现旧的翻译弹窗，先移除');
         chrome.runtime.sendMessage({ action: 'cleanup' }, () => {
           if (chrome.runtime.lastError) {
             // 清理请求的错误可以静默处理
             console.log('清理请求未完成，继续处理');
           }
           oldPopup.remove();
+          console.log('显示新弹窗');
           const popup = showPopup(request.text);
           chrome.runtime.sendMessage({ 
             action: 'translate', 
@@ -201,6 +232,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
           });
         });
       } else {
+        console.log('显示弹窗');
         const popup = showPopup(request.text);
         chrome.runtime.sendMessage({ 
           action: 'translate', 
@@ -208,7 +240,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
         });
       }
       sendResponse({ success: true });
-      return false;
+      return true; // 保持通道开放
     }
     
     if (request.action === 'updateTranslation') {
@@ -216,7 +248,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       if (!popup) {
         console.log('翻译弹窗不存在，可能已关闭');
         sendResponse({ success: true });
-        return false;
+        return true;
       }
       
       const translatedTextEl = popup.querySelector('.translator-translated-text');
@@ -227,6 +259,7 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
       
       if (translatedTextEl && reasoningTextEl && loadingEl) {
         if (request.error) {
+          console.log('翻译发生错误:', request.error);
           if (request.error.includes('API Key') || 
               request.error.includes('API 请求失败') ||
               request.error.includes('rate limit')) {
@@ -235,34 +268,39 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             loadingEl.textContent = '翻译失败，请重试';
           }
         } else {
-          translatedTextEl.innerHTML = marked.parse(request.content);
+          console.log('更新翻译结果');
+          translatedTextEl.innerHTML = simpleMD.parse(request.content);
           
           if (reasoningSectionEl) {
             reasoningSectionEl.style.display = request.hasReasoning ? 'block' : 'none';
             if (request.hasReasoning && request.reasoningContent) {
-              reasoningTextEl.innerHTML = marked.parse(request.reasoningContent);
+              reasoningTextEl.innerHTML = simpleMD.parse(request.reasoningContent);
             }
           }
           
           if (request.done) {
+            console.log('翻译完成');
             loadingEl.style.display = 'none';
           }
 
-          // 只在用户未主动滚动时自动滚动到底部
-          if (!popup.userHasScrolled()) {
-            contentEl.scrollTop = contentEl.scrollHeight;
+          // 翻译成功后滚动到顶部
+          if (contentEl) {
+            contentEl.scrollTop = 0;
           }
         }
       }
+      
       sendResponse({ success: true });
-      return false;
+      return true;
     }
   } catch (error) {
-    // 只记录错误，不返回给用户
-    console.error('处理消息时出错:', error);
-    sendResponse({ success: true });
+    console.error('处理消息错误:', error);
+    sendResponse({ success: false, error: error.message });
+    return true;
   }
-  return false;
+  
+  sendResponse({ success: false, error: '未知操作' });
+  return true;
 });
 
 // 更新弹窗创建函数
@@ -389,23 +427,8 @@ if (typeof window.translatorInitialized === 'undefined') {
 
   // 修改为仅在未定义时创建 marked
   if (typeof window.marked === 'undefined') {
-    window.marked = {
-      parse: (text) => {
-        // 保持原有解析逻辑
-        return text
-          .replace(/```([\s\S]*?)```/g, '<pre><code>$1</code></pre>')
-          .replace(/`([^`]+)`/g, '<code>$1</code>')
-          .replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>')
-          .replace(/\*([^*]+)\*/g, '<em>$1</em>')
-          .replace(/^\> (.+)$/gm, '<blockquote>$1</blockquote>')
-          .replace(/^### (.+)$/gm, '<h3>$1</h3>')
-          .replace(/^## (.+)$/gm, '<h2>$1</h2>')
-          .replace(/^# (.+)$/gm, '<h1>$1</h1>')
-          .replace(/^- (.+)$/gm, '<li>$1</li>')
-          .replace(/\n\n/g, '</p><p>')
-          .replace(/^(.+)$/gm, '<p>$1</p>');
-      }
-    };
+    // 使用顶部已定义的simpleMD
+    window.marked = simpleMD;
   }
 }
 

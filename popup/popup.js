@@ -116,28 +116,58 @@ function initializeApp() {
     console.log('所有DOM元素已找到');
   }
 
-  // 添加历史记录模态框
-  if (!document.getElementById('historyModal')) {
-    const modalHTML = `
-      <div id="historyModal" class="modal" style="display: none;">
-        <div class="modal-content">
-          <div class="modal-header">
-            <h2>翻译历史</h2>
-            <div class="modal-actions">
-              <input type="text" id="historySearch" placeholder="搜索历史记录..." class="history-search">
-              <button id="clearHistory" class="text-btn" style="color:#f44336;">清空</button>
-              <button id="exportHistory" class="text-btn">导出</button>
-              <button id="importHistory" class="text-btn">导入</button>
-              <span class="close-modal">&times;</span>
+  // 添加历史记录面板
+  if (!document.getElementById('historyPanel')) {
+    const panelHTML = `
+      <div id="historyPanel" class="history-panel">
+        <div class="history-panel-header">
+          <div class="history-panel-title">
+            <div class="back-button" id="historyBackButton">
+              <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M19 12H5M12 19l-7-7 7-7"/>
+              </svg>
             </div>
+            <h2>翻译历史</h2>
           </div>
-          <div class="modal-body">
-            <div id="historyList"></div>
+          <div class="history-search-container">
+            <input type="text" id="historySearch" placeholder="搜索历史记录..." class="history-search">
           </div>
+        </div>
+        <div class="history-panel-content" id="historyList"></div>
+        <div class="history-panel-footer">
+          <button id="clearHistory" class="footer-btn">
+            <div class="footer-btn-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6"></polyline>
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
+              </svg>
+            </div>
+            <span>清空</span>
+          </button>
+          <button id="exportHistory" class="footer-btn">
+            <div class="footer-btn-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="17 8 12 3 7 8"></polyline>
+                <line x1="12" y1="3" x2="12" y2="15"></line>
+              </svg>
+            </div>
+            <span>导出</span>
+          </button>
+          <button id="importHistory" class="footer-btn">
+            <div class="footer-btn-icon">
+              <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"></path>
+                <polyline points="7 10 12 15 17 10"></polyline>
+                <line x1="12" y1="15" x2="12" y2="3"></line>
+              </svg>
+            </div>
+            <span>导入</span>
+          </button>
         </div>
       </div>
     `;
-    document.body.insertAdjacentHTML('beforeend', modalHTML);
+    document.body.insertAdjacentHTML('beforeend', panelHTML);
 
     // 添加隐藏的文件输入
     const fileInput = document.createElement('input');
@@ -210,16 +240,16 @@ function initializeApp() {
     document.head.appendChild(style);
   }
 
-  // 重要：在动态添加模态框后更新元素缓存
+  // 更新historyElements对象，替换historyModal为historyPanel
   const historyElements = {
-    historyModal: document.getElementById('historyModal'),
     historyList: document.getElementById('historyList'),
-    closeModal: document.querySelector('.close-modal'),
+    historyPanel: document.getElementById('historyPanel'),
     historySearch: document.getElementById('historySearch'),
+    clearHistory: document.getElementById('clearHistory'),
     exportHistory: document.getElementById('exportHistory'),
     importHistory: document.getElementById('importHistory'),
     importFile: document.getElementById('importFile'),
-    clearHistory: document.getElementById('clearHistory')
+    historyBackButton: document.getElementById('historyBackButton')
   };
 
   // 输出当前获取到的元素情况，便于调试
@@ -355,170 +385,233 @@ function initializeApp() {
     });
   }
 
-  // 历史记录按钮点击事件 - 添加空值检查
+  // 绑定历史记录按钮点击事件
   if (elements.historyBtn) {
-    elements.historyBtn.addEventListener('click', function () {
-      loadAndDisplayHistory();
-    });
+    elements.historyBtn.addEventListener('click', loadAndDisplayHistory);
   }
 
-  // 历史记录搜索功能 - 添加空值检查
-  if (historyElements.historySearch) {
-    historyElements.historySearch.addEventListener('input', debounce(function () {
-      const searchTerm = this.value.toLowerCase();
-      const historyItems = document.querySelectorAll('.history-item');
-
-      historyItems.forEach(item => {
-        const original = item.dataset.original.toLowerCase();
-        const translated = item.dataset.translated.toLowerCase();
-        const matches = original.includes(searchTerm) || translated.includes(searchTerm);
-        item.style.display = matches ? 'block' : 'none';
-      });
-
-      // 显示无匹配结果提示
-      const noResults = document.getElementById('no-results');
-      const visibleItems = document.querySelectorAll('.history-item:not([style*="display: none"])');
-
-      if (visibleItems.length === 0) {
-        if (!noResults && historyElements.historyList) {
-          const message = document.createElement('p');
-          message.id = 'no-results';
-          message.className = 'empty-history';
-          message.textContent = '没有匹配的记录';
-          historyElements.historyList.appendChild(message);
-        }
-      } else if (noResults) {
-        noResults.remove();
-      }
-    }, 300));
-  }
-
-  // 导出历史记录 - 添加空值检查
-  if (historyElements.exportHistory) {
-    historyElements.exportHistory.addEventListener('click', function () {
-      chrome.runtime.sendMessage({ action: 'getHistory' }, function (response) {
-        if (response && response.success && response.history.length > 0) {
-          const historyData = JSON.stringify(response.history, null, 2);
-          const blob = new Blob([historyData], { type: 'application/json' });
-          const url = URL.createObjectURL(blob);
-
-          const now = new Date();
-          const dateStr = `${now.getFullYear()}${(now.getMonth() + 1).toString().padStart(2, '0')}${now.getDate().toString().padStart(2, '0')}`;
-
-          const a = document.createElement('a');
-          a.href = url;
-          a.download = `翻译历史_${dateStr}.json`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
-
-          URL.revokeObjectURL(url);
-        } else {
-          alert('没有历史记录可导出');
-        }
-      });
-    });
-  }
-
-  // 导入历史记录 - 添加空值检查
-  if (historyElements.importHistory && historyElements.importFile) {
-    historyElements.importHistory.addEventListener('click', function () {
-      historyElements.importFile.click();
-    });
-
-    historyElements.importFile.addEventListener('change', function (e) {
-      const file = e.target.files[0];
-      if (!file) return;
-
-      const reader = new FileReader();
-      reader.onload = function (event) {
-        try {
-          const importedData = JSON.parse(event.target.result);
-
-          // 验证导入数据格式
-          if (!Array.isArray(importedData)) {
-            throw new Error('无效的历史记录格式');
-          }
-
-          // 检查每一项是否有必要的字段
-          const isValidFormat = importedData.every(item =>
-            typeof item === 'object' &&
-            'original' in item &&
-            'translated' in item &&
-            'timestamp' in item
-          );
-
-          if (!isValidFormat) {
-            throw new Error('导入的历史记录缺少必要字段');
-          }
-
-          // 导入确认
-          if (confirm(`确定导入${importedData.length}条历史记录吗？`)) {
-            // 发送导入数据到background
-            chrome.runtime.sendMessage({
-              action: 'importHistory',
-              history: importedData
-            }, function (response) {
-              if (response && response.success) {
-                alert('导入成功！');
-                loadAndDisplayHistory(); // 重新加载历史记录
-              } else {
-                alert('导入失败：' + (response?.error || '未知错误'));
-              }
-            });
-          }
-        } catch (error) {
-          console.error('导入失败:', error);
-          if (historyElements.historyList) {
-            const errorDiv = document.createElement('div');
-            errorDiv.className = 'import-error';
-            errorDiv.textContent = `导入失败: ${error.message || '无效的文件格式'}`;
-            historyElements.historyList.prepend(errorDiv);
-
-            setTimeout(() => {
-              errorDiv.style.opacity = '0';
-              errorDiv.addEventListener('transitionend', () => errorDiv.remove());
-            }, 3000);
-          }
-        }
-
-        // 清空文件输入，以便下次选择同一文件时也能触发change事件
-        this.value = '';
-      };
-
-      reader.readAsText(file);
-    });
-  }
-
-  // 关闭模态框 - 添加空值检查
-  if (historyElements.closeModal && historyElements.historyModal) {
-    historyElements.closeModal.addEventListener('click', function () {
-      historyElements.historyModal.style.display = 'none';
-    });
-  }
-
-  // 点击模态框外部关闭 - 添加空值检查
-  if (historyElements.historyModal) {
-    window.addEventListener('click', function (event) {
-      if (event.target === historyElements.historyModal) {
-        historyElements.historyModal.style.display = 'none';
+  // 绑定历史记录面板关闭按钮
+  if (historyElements.historyBackButton) {
+    historyElements.historyBackButton.addEventListener('click', () => {
+      if (historyElements.historyPanel) {
+        historyElements.historyPanel.classList.remove('visible');
+        // 在过渡完成后隐藏面板
+        setTimeout(() => {
+          historyElements.historyPanel.style.display = 'none';
+        }, 250);
       }
     });
   }
 
-  // 清空历史记录 - 添加空值检查
+  // 绑定清空历史记录按钮
   if (historyElements.clearHistory) {
-    historyElements.clearHistory.addEventListener('click', function () {
-      if (confirm('确定要清空所有历史记录吗？此操作不可撤销！')) {
-        chrome.runtime.sendMessage({ action: 'clearHistory' }, function (response) {
-          if (response && response.success && historyElements.historyList) {
-            historyElements.historyList.innerHTML = '<p class="empty-history">暂无翻译历史</p>';
+    historyElements.clearHistory.addEventListener('click', () => {
+      if (confirm('确定要清空所有历史记录吗？此操作不可撤销。')) {
+        chrome.runtime.sendMessage({ action: 'clearHistory' }, function(response) {
+          if (response && response.success) {
+            if (historyElements.historyList) {
+              historyElements.historyList.innerHTML = `
+                <div class="empty-state-container">
+                  <p class="empty-history">所有历史记录已清空</p>
+                  <div class="history-limit-hint">注意：系统最多保留100条最近的历史记录</div>
+                </div>
+              `;
+              
+              // 清空文件输入框的值，确保能够再次选择相同文件
+              if (historyElements.importFile) {
+                historyElements.importFile.value = '';
+              }
+              
+              // 显示操作成功提示
+              const toast = document.createElement('div');
+              toast.className = 'toast success-toast';
+              toast.textContent = '历史记录已清空';
+              document.body.appendChild(toast);
+              
+              setTimeout(() => {
+                toast.classList.add('show');
+                setTimeout(() => {
+                  toast.classList.remove('show');
+                  setTimeout(() => toast.remove(), 300);
+                }, 2000);
+              }, 100);
+            }
           } else {
-            alert('清空历史记录失败');
+            alert('清空历史记录失败：' + (response?.error || '未知错误'));
           }
         });
       }
     });
+  }
+
+  // 绑定导出历史记录按钮
+  if (historyElements.exportHistory) {
+    historyElements.exportHistory.addEventListener('click', () => {
+      chrome.runtime.sendMessage({ action: 'getHistory' }, function(response) {
+        if (response && response.success && response.history.length > 0) {
+          const historyData = JSON.stringify(response.history, null, 2);
+          const blob = new Blob([historyData], { type: 'application/json' });
+          const url = URL.createObjectURL(blob);
+          
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = `translation_history_${new Date().toISOString().slice(0, 10)}.json`;
+          a.click();
+          
+          setTimeout(() => {
+            URL.revokeObjectURL(url);
+          }, 100);
+          
+          // 显示操作成功提示
+          const toast = document.createElement('div');
+          toast.className = 'toast success-toast';
+          toast.textContent = '历史记录已导出';
+          document.body.appendChild(toast);
+          
+          setTimeout(() => {
+            toast.classList.add('show');
+            setTimeout(() => {
+              toast.classList.remove('show');
+              setTimeout(() => toast.remove(), 300);
+            }, 2000);
+          }, 100);
+        } else {
+          // 显示错误提示
+          const toast = document.createElement('div');
+          toast.className = 'toast error-toast';
+          toast.textContent = '暂无历史记录可导出';
+          document.body.appendChild(toast);
+          
+          setTimeout(() => {
+            toast.classList.add('show');
+            setTimeout(() => {
+              toast.classList.remove('show');
+              setTimeout(() => toast.remove(), 300);
+            }, 2000);
+          }, 100);
+        }
+      });
+    });
+  }
+
+  // 绑定导入历史记录按钮和文件输入
+  if (historyElements.importHistory && historyElements.importFile) {
+    historyElements.importHistory.addEventListener('click', () => {
+      // 确保每次点击导入按钮时，文件输入的值都被重置
+      historyElements.importFile.value = '';
+      historyElements.importFile.click();
+    });
+
+    historyElements.importFile.addEventListener('change', (event) => {
+      const file = event.target.files[0];
+      if (file) {
+        const reader = new FileReader();
+        reader.onload = function(e) {
+          try {
+            const history = JSON.parse(e.target.result);
+            if (Array.isArray(history)) {
+              chrome.runtime.sendMessage({
+                action: 'importHistory',
+                history: history
+              }, function(response) {
+                if (response && response.success) {
+                  // 显示操作成功提示
+                  const toast = document.createElement('div');
+                  toast.className = 'toast success-toast';
+                  toast.textContent = '历史记录导入成功';
+                  document.body.appendChild(toast);
+                  
+                  setTimeout(() => {
+                    toast.classList.add('show');
+                    setTimeout(() => {
+                      toast.classList.remove('show');
+                      setTimeout(() => toast.remove(), 300);
+                    }, 2000);
+                  }, 100);
+                  
+                  loadAndDisplayHistory(); // 重新加载历史记录
+                } else {
+                  // 显示错误提示
+                  const toast = document.createElement('div');
+                  toast.className = 'toast error-toast';
+                  toast.textContent = '导入失败：' + (response?.error || '未知错误');
+                  document.body.appendChild(toast);
+                  
+                  setTimeout(() => {
+                    toast.classList.add('show');
+                    setTimeout(() => {
+                      toast.classList.remove('show');
+                      setTimeout(() => toast.remove(), 300);
+                    }, 2000);
+                  }, 100);
+                }
+              });
+            } else {
+              // 显示错误提示
+              const toast = document.createElement('div');
+              toast.className = 'toast error-toast';
+              toast.textContent = '导入的文件格式不正确';
+              document.body.appendChild(toast);
+              
+              setTimeout(() => {
+                toast.classList.add('show');
+                setTimeout(() => {
+                  toast.classList.remove('show');
+                  setTimeout(() => toast.remove(), 300);
+                }, 2000);
+              }, 100);
+            }
+          } catch (error) {
+            // 显示错误提示
+            const toast = document.createElement('div');
+            toast.className = 'toast error-toast';
+            toast.textContent = '导入失败：文件解析错误';
+            document.body.appendChild(toast);
+            
+            setTimeout(() => {
+              toast.classList.add('show');
+              setTimeout(() => {
+                toast.classList.remove('show');
+                setTimeout(() => toast.remove(), 300);
+              }, 2000);
+            }, 100);
+            
+            console.error(error);
+          }
+        };
+        reader.readAsText(file);
+      }
+    });
+  }
+
+  // 绑定历史记录搜索框
+  if (historyElements.historySearch) {
+    historyElements.historySearch.addEventListener('input', debounce(function() {
+      const searchTerm = this.value.toLowerCase();
+      chrome.runtime.sendMessage({ action: 'getHistory' }, function(response) {
+        if (response && response.success) {
+          if (searchTerm.trim() === '') {
+            displayHistory(response.history);
+          } else {
+            const filteredHistory = response.history.filter(item => 
+              item.original.toLowerCase().includes(searchTerm) ||
+              item.translated.toLowerCase().includes(searchTerm)
+            );
+            
+            if (filteredHistory.length > 0) {
+              displayHistory(filteredHistory);
+            } else {
+              historyElements.historyList.innerHTML = `
+                <div class="empty-state-container">
+                  <p class="empty-history">没有符合"${searchTerm}"的搜索结果</p>
+                  <div class="history-limit-hint">注意：系统最多保留100条最近的历史记录</div>
+                </div>
+              `;
+            }
+          }
+        }
+      });
+    }, 300));
   }
 
   // 监听翻译更新消息
@@ -574,13 +667,18 @@ function initializeApp() {
    */
   function loadAndDisplayHistory() {
     // 检查必要元素是否存在
-    if (!historyElements.historyList || !historyElements.historyModal) {
+    if (!historyElements.historyList || !historyElements.historyPanel) {
       console.error('历史记录相关DOM元素不存在');
       return;
     }
 
-    historyElements.historyList.innerHTML = '<p class="loading">加载历史记录中...</p>';
-    historyElements.historyModal.style.display = 'flex';
+    historyElements.historyList.innerHTML = '<div class="loading">加载历史记录</div>';
+    historyElements.historyPanel.style.display = 'flex';
+    
+    // 添加延迟以确保过渡效果显示
+    setTimeout(() => {
+      historyElements.historyPanel.classList.add('visible');
+    }, 10);
 
     if (historyElements.historySearch) {
       historyElements.historySearch.value = ''; // 清空搜索框
@@ -597,7 +695,12 @@ function initializeApp() {
       if (response && response.success && response.history.length > 0 && historyElements.historyList) {
         displayHistory(response.history);
       } else if (historyElements.historyList) {
-        historyElements.historyList.innerHTML = '<p class="empty-history">暂无翻译历史</p>';
+        historyElements.historyList.innerHTML = `
+          <div class="empty-state-container">
+            <p class="empty-history">暂无翻译历史</p>
+            <div class="history-limit-hint">注意：系统最多保留100条最近的历史记录</div>
+          </div>
+        `;
       }
     });
   }
@@ -610,6 +713,19 @@ function initializeApp() {
     if (!historyElements.historyList) return;
 
     historyElements.historyList.innerHTML = '';
+
+    if (history.length === 0) {
+      historyElements.historyList.innerHTML = `
+        <div class="empty-state-container">
+          <p class="empty-history">暂无翻译历史</p>
+          <div class="history-limit-hint">注意：系统最多保留100条最近的历史记录</div>
+        </div>
+      `;
+      return;
+    }
+
+    // 创建一个文档片段，优化性能
+    const fragment = document.createDocumentFragment();
 
     history.forEach(item => {
       // 格式化日期
@@ -666,8 +782,16 @@ function initializeApp() {
         restoreHistoryItem(this);
       });
 
-      historyElements.historyList.appendChild(historyItem);
+      fragment.appendChild(historyItem);
     });
+
+    // 添加历史记录限制提示
+    const limitHint = document.createElement('div');
+    limitHint.className = 'history-limit-hint';
+    limitHint.textContent = '注意：系统最多保留100条最近的历史记录';
+    fragment.appendChild(limitHint);
+
+    historyElements.historyList.appendChild(fragment);
   }
 
   /**
@@ -680,6 +804,9 @@ function initializeApp() {
       console.error('元素不存在，可能DOM尚未加载完成');
       return;
     }
+
+    // 添加恢复动画
+    item.classList.add('restoring');
 
     // 填充原文和译文
     elements.sourceText.value = item.dataset.original;
@@ -700,9 +827,13 @@ function initializeApp() {
       }
     }
 
-    // 关闭模态框
-    if (historyElements.historyModal) {
-      historyElements.historyModal.style.display = 'none';
+    // 关闭历史记录面板
+    if (historyElements.historyPanel) {
+      historyElements.historyPanel.classList.remove('visible');
+      // 在过渡完成后隐藏面板
+      setTimeout(() => {
+        historyElements.historyPanel.style.display = 'none';
+      }, 250);
     }
   }
 
@@ -717,16 +848,18 @@ function initializeApp() {
       original: original
     }, function (response) {
       if (response && response.success) {
-        // 渐隐效果
-        item.style.transition = 'opacity 0.3s';
-        item.style.opacity = '0';
-
+        // 添加删除动画类
+        item.classList.add('deleting');
+        
+        // 等待动画完成后移除元素
         setTimeout(() => {
           item.style.height = '0';
           item.style.margin = '0';
           item.style.padding = '0';
           item.style.overflow = 'hidden';
-          item.style.transition = 'height 0.3s, margin 0.3s, padding 0.3s';
+          item.style.opacity = '0';
+          item.style.transform = 'translateX(30px)';
+          item.style.transition = 'all 0.3s ease-out';
 
           setTimeout(() => {
             item.remove();
@@ -735,7 +868,7 @@ function initializeApp() {
               historyElements.historyList.innerHTML = '<p class="empty-history">暂无翻译历史</p>';
             }
           }, 300);
-        }, 300);
+        }, 50);
       } else {
         alert('删除失败：' + (response?.error || '未知错误'));
       }

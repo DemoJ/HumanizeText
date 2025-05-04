@@ -64,6 +64,18 @@
         </div>
       </div>
 
+      <!-- 添加快捷键设置 -->
+      <div class="form-group">
+        <label for="shortcutInfo">翻译快捷键</label>
+        <div class="shortcut-info-box" id="shortcutInfo">
+          <div>当前快捷键: <span id="currentShortcut">Alt+H</span></div>
+          <button type="button" id="changeShortcut" class="secondary-btn">修改快捷键</button>
+        </div>
+        <div class="help-text">
+          选中网页文本后按快捷键可直接翻译，无需右键菜单。修改后需重启浏览器生效。
+        </div>
+      </div>
+
       <div class="button-group">
         <button type="button" id="testBtn" class="secondary-btn">测试连接</button>
         <button type="submit" class="primary-btn">保存设置</button>
