@@ -7,49 +7,54 @@ document.addEventListener('DOMContentLoaded', () => {
   const temperatureInput = document.getElementById('temperature');
   const temperatureValue = document.getElementById('temperatureValue');
   const testBtn = document.getElementById('testBtn');
-  const statusMessage = document.createElement('div'); // 添加状态消息元素
+  // 添加之前缺少的DOM元素引用
+  const promptTemplateInput = document.getElementById('promptTemplate');
+  const presetBtns = document.querySelectorAll('.preset-btn');
+
+  const statusMessage = document.createElement('div');
   statusMessage.className = 'status-message';
   form.appendChild(statusMessage);
 
-  // 设置默认值
+  // 默认设置中添加提示词模板
   const defaultSettings = {
     baseUrl: 'https://api.deepseek.com/v1/chat/completions',
     model: 'deepseek-reasoner',
-    temperature: 0.7
+    temperature: 0.7,
+    promptTemplate: '用通俗易懂的中文解释以下内容：\n\n{text}'
   };
 
   // 加载保存的设置，优先从云端获取，失败时从本地获取
   async function loadSettings() {
     try {
       // 尝试从云端获取设置
-      const syncSettings = await chrome.storage.sync.get(['apiKey', 'baseUrl', 'model', 'temperature']);
-      
+      const syncSettings = await chrome.storage.sync.get(['apiKey', 'baseUrl', 'model', 'temperature', 'promptTemplate']);
+
       if (Object.keys(syncSettings).length > 0) {
         applySettings(syncSettings);
         console.log('从云端加载设置成功');
         return;
       }
-      
+
       // 如果云端没有设置，尝试从本地获取
       console.log('云端没有设置，尝试从本地获取');
-      const localSettings = await chrome.storage.local.get(['apiKey', 'baseUrl', 'model', 'temperature']);
-      
+      const localSettings = await chrome.storage.local.get(['apiKey', 'baseUrl', 'model', 'temperature', 'promptTemplate']);
+
       if (Object.keys(localSettings).length > 0) {
         applySettings(localSettings);
         console.log('从本地加载设置成功');
         return;
       }
-      
+
       // 如果本地也没有，使用默认设置
       applySettings(defaultSettings);
       console.log('使用默认设置');
     } catch (error) {
       console.error('从云端加载设置失败，尝试从本地获取:', error);
-      
+
       try {
         // 尝试从本地获取设置
-        const localSettings = await chrome.storage.local.get(['apiKey', 'baseUrl', 'model', 'temperature']);
-        
+        const localSettings = await chrome.storage.local.get(['apiKey', 'baseUrl', 'model', 'temperature', 'promptTemplate']);
+
         if (Object.keys(localSettings).length > 0) {
           applySettings(localSettings);
           console.log('从本地加载设置成功');
@@ -58,7 +63,7 @@ document.addEventListener('DOMContentLoaded', () => {
       } catch (localError) {
         console.error('从本地加载设置也失败:', localError);
       }
-      
+
       // 如果都失败了，使用默认设置
       applySettings(defaultSettings);
       console.log('使用默认设置');
@@ -72,6 +77,11 @@ document.addEventListener('DOMContentLoaded', () => {
     modelInput.value = settings.model || defaultSettings.model;
     temperatureInput.value = settings.temperature || defaultSettings.temperature;
     temperatureValue.textContent = temperatureInput.value;
+
+    // 确保promptTemplateInput存在再设置值
+    if (promptTemplateInput) {
+      promptTemplateInput.value = settings.promptTemplate || defaultSettings.promptTemplate;
+    }
   }
 
   // 加载设置
@@ -93,6 +103,18 @@ document.addEventListener('DOMContentLoaded', () => {
     temperatureValue.textContent = e.target.value;
   });
 
+  // 预设模板点击事件 - 添加空值检查
+  if (presetBtns && presetBtns.length > 0) {
+    presetBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        if (promptTemplateInput) {
+          const template = btn.dataset.template;
+          promptTemplateInput.value = template;
+        }
+      });
+    });
+  }
+
   // 保存设置
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -101,7 +123,8 @@ document.addEventListener('DOMContentLoaded', () => {
       apiKey: apiKeyInput.value.trim(),
       baseUrl: baseUrlInput.value.trim() || defaultSettings.baseUrl,
       model: modelInput.value,
-      temperature: parseFloat(temperatureInput.value)
+      temperature: parseFloat(temperatureInput.value),
+      promptTemplate: promptTemplateInput ? promptTemplateInput.value : defaultSettings.promptTemplate
     };
 
     const saveBtn = form.querySelector('button[type="submit"]');
@@ -113,11 +136,11 @@ document.addEventListener('DOMContentLoaded', () => {
       // 先保存到本地
       await chrome.storage.local.set(settings);
       console.log('设置已保存到本地存储');
-      
+
       // 再尝试保存到云端
       await chrome.storage.sync.set(settings);
       console.log('设置已同步到云端存储');
-      
+
       saveBtn.textContent = '已保存';
       statusMessage.textContent = '设置已保存到本地和云端';
       statusMessage.style.color = 'green';
@@ -167,7 +190,7 @@ document.addEventListener('DOMContentLoaded', () => {
       });
 
       const data = await response.json();
-      
+
       if (response.ok && data.choices) {
         alert('连接测试成功！');
       } else {
@@ -180,4 +203,4 @@ document.addEventListener('DOMContentLoaded', () => {
       testBtn.textContent = '测试连接';
     }
   });
-}); 
+});
