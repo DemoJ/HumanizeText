@@ -283,9 +283,13 @@ chrome.runtime.onMessage.addListener((request, sender, sendResponse) => {
             loadingEl.style.display = 'none';
           }
 
-          // 翻译成功后滚动到顶部
-          if (contentEl) {
-            contentEl.scrollTop = 0;
+          // 判断是否用户已手动滚动
+          if (!popup.userHasScrolled || !popup.userHasScrolled()) {
+            // 如果用户没有手动滚动，则自动滚动到底部
+            if (contentEl) {
+              // 滚动到底部而不是顶部
+              contentEl.scrollTop = contentEl.scrollHeight;
+            }
           }
         }
       }
