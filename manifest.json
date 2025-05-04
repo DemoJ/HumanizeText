@@ -14,12 +14,19 @@
     "<all_urls>"
   ],
   "background": {
+    "scripts": [
+      "background.js"
+    ],
     "service_worker": "background.js"
   },
   "content_scripts": [
     {
-      "matches": ["<all_urls>"],
-      "js": ["content/content.js"],
+      "matches": [
+        "<all_urls>"
+      ],
+      "js": [
+        "content/content.js"
+      ],
       "run_at": "document_idle",
       "all_frames": false
     }
@@ -34,10 +41,16 @@
     "48": "assets/icon.png"
   },
   "options_page": "options/options.html",
-  "web_accessible_resources": [{
-    "resources": ["content/content.js"],
-    "matches": ["<all_urls>"]
-  }],
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "content/content.js"
+      ],
+      "matches": [
+        "<all_urls>"
+      ]
+    }
+  ],
   "browser_specific_settings": {
     "gecko": {
       "id": "HumanTranslate@diyun.site"
@@ -51,4 +64,4 @@
       "description": "翻译选中的文本"
     }
   }
-} 
+}
