@@ -12,11 +12,37 @@ if (!document.querySelector('#translator-popup-style')) {
       box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
       display: flex;
       flex-direction: column;
-      max-width: 400px;
+      max-width: none;
       min-width: 300px;
       font-family: system-ui, -apple-system, sans-serif;
       max-height: 80vh;
       cursor: default;
+      width: 400px;
+      overflow: hidden;
+    }
+
+    /* 右侧拖动区域 */
+    .translator-popup::after {
+      content: '';
+      position: absolute;
+      top: 0;
+      right: 0;
+      width: 15px;
+      height: 100%;
+      cursor: e-resize;
+      z-index: 2;
+    }
+    
+    /* 左侧拖动区域 */
+    .translator-popup::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 15px;
+      height: 100%;
+      cursor: w-resize;
+      z-index: 2;
     }
 
     .translator-popup .translator-header {
@@ -160,6 +186,17 @@ if (!document.querySelector('#translator-popup-style')) {
       background: #45a049;
     }
 
+    /* 调整弹窗时的样式 */
+    .translator-popup.resizing-left {
+      cursor: w-resize;
+      user-select: none;
+    }
+
+    .translator-popup.resizing-right {
+      cursor: e-resize;
+      user-select: none;
+    }
+
     /* 美化滚动条 */
     .translator-popup .translator-content::-webkit-scrollbar {
       width: 8px;
@@ -208,6 +245,13 @@ const simpleMD = {
         return '<p>' + m + '</p>';
       });
   }
+};
+
+// 添加全局变量存储弹窗上次的位置和宽度
+let lastPopupState = {
+  left: null,
+  top: null,
+  width: null
 };
 
 // 修改消息监听器
@@ -338,18 +382,38 @@ function showPopup(selection) {
     <button class="translator-copy-btn">复制译文</button>
   `;
 
-  // 修改弹窗位置为右上角
+  document.body.appendChild(popup);
+
+  // 修改弹窗位置 - 使用上次的位置和宽度，或者默认值
   const viewportWidth = window.innerWidth;
   const viewportHeight = window.innerHeight;
   
-  // 设置在右上角，留出一定边距
-  popup.style.left = `${viewportWidth - 420}px`; // 弹窗宽度约400px，留20px边距
-  popup.style.top = '20px'; // 距离顶部20px
+  // 默认位置 - 右上角，留出一定边距
+  let left = viewportWidth - 420; // 弹窗宽度约400px，留20px边距
+  let top = 20; // 距离顶部20px
+  let width = 400; // 默认宽度
+  
+  // 如果有上次的状态，则使用上次的位置和宽度
+  if (lastPopupState.left !== null && lastPopupState.top !== null) {
+    // 确保位置在可视区域内
+    left = Math.min(Math.max(0, lastPopupState.left), viewportWidth - 300); // 保证至少300px宽度可见
+    top = Math.min(Math.max(0, lastPopupState.top), viewportHeight - 100); // 保证至少100px高度可见
+  }
+  
+  if (lastPopupState.width !== null) {
+    // 确保宽度在允许范围内
+    width = Math.min(Math.max(300, lastPopupState.width), 1200);
+  }
+  
+  // 应用位置和宽度
+  popup.style.left = `${left}px`;
+  popup.style.top = `${top}px`;
+  popup.style.width = `${width}px`;
 
-  document.body.appendChild(popup);
+  console.log('弹窗初始化 - 位置:', left, top, '宽度:', width, '上次状态:', lastPopupState);
 
   // 添加事件监听器
-  initializePopupEvents(popup);
+  const eventCleanupFunctions = initializePopupEvents(popup);
 
   // 添加滚动检测
   const contentEl = popup.querySelector('.translator-content');
@@ -368,16 +432,54 @@ function showPopup(selection) {
 
   // 将滚动状态添加到popup对象上
   popup.userHasScrolled = () => userHasScrolled;
+  
+  // 关闭按钮事件
+  popup.querySelector('.translator-close-btn').addEventListener('click', () => {
+    // 保存当前弹窗状态
+    savePopupState(popup);
+    
+    // 发送清理请求的消息
+    chrome.runtime.sendMessage({ 
+      action: 'cleanup'
+    });
+    
+    // 清理事件监听器
+    if (eventCleanupFunctions) {
+      eventCleanupFunctions();
+    }
+    
+    popup.remove();
+  });
 
   return popup;
 }
 
+// 保存弹窗状态的辅助函数
+function savePopupState(popup) {
+  if (popup) {
+    // 移除 'px' 并转换为数字
+    const left = parseInt(popup.style.left);
+    const top = parseInt(popup.style.top);
+    const width = parseInt(popup.style.width);
+    
+    if (!isNaN(left) && !isNaN(top) && !isNaN(width)) {
+      lastPopupState = { left, top, width };
+      console.log('保存弹窗状态:', lastPopupState);
+    }
+  }
+}
+
 // 抽取弹窗事件初始化逻辑
 function initializePopupEvents(popup) {
+  // 公共变量
+  let isDragging = false;
+  let isResizing = false;
+  let resizeDirection = null; // 'left' 或 'right'
+  let startX, startY, startWidth;
+  let initialX, initialY, startLeft;
+
   // 使弹窗可拖动
   const header = popup.querySelector('.translator-header');
-  let isDragging = false;
-  let startX, startY, initialX, initialY;
 
   header.addEventListener('mousedown', (e) => {
     isDragging = true;
@@ -385,30 +487,120 @@ function initializePopupEvents(popup) {
     startY = e.clientY;
     initialX = popup.offsetLeft;
     initialY = popup.offsetTop;
-  });
+    e.preventDefault();
+    e.stopPropagation();
+  }, true);
 
-  document.addEventListener('mousemove', (e) => {
-    if (isDragging) {
+  // 添加左右两侧拖动调整宽度功能
+  popup.addEventListener('mousedown', (e) => {
+    // 确保不是从header开始的拖动
+    if (e.target.closest('.translator-header')) {
+      return;
+    }
+    
+    // 获取点击位置与弹窗的相对位置
+    const rect = popup.getBoundingClientRect();
+    const leftEdgeDistance = e.clientX - rect.left;
+    const rightEdgeDistance = rect.right - e.clientX;
+    
+    console.log('鼠标按下 - 左距离:', leftEdgeDistance, '右距离:', rightEdgeDistance);
+    
+    // 判断调整方向 - 增大热区到15px使操作更容易
+    if (leftEdgeDistance <= 15) {
+      isResizing = true;
+      resizeDirection = 'left';
+      startWidth = popup.offsetWidth;
+      startX = e.clientX;
+      startLeft = popup.offsetLeft;
+      popup.classList.add('resizing-left');
+      console.log('开始左侧调整宽度 - 初始宽度:', startWidth, '初始X:', startX, '初始左侧:', startLeft);
+      e.preventDefault();
+      e.stopPropagation();
+    } else if (rightEdgeDistance <= 15) {
+      isResizing = true;
+      resizeDirection = 'right';
+      startWidth = popup.offsetWidth;
+      startX = e.clientX;
+      popup.classList.add('resizing-right');
+      console.log('开始右侧调整宽度 - 初始宽度:', startWidth, '初始X:', startX);
+      e.preventDefault();
+      e.stopPropagation();
+    }
+  }, true);
+  
+  // 创建单独的mousemove和mouseup处理函数，以便可以正确移除它们
+  const mouseMoveHandler = (e) => {
+    if (isResizing) {
+      // 根据不同方向计算新宽度
+      let newWidth;
+      
+      if (resizeDirection === 'right') {
+        // 向右拖动，增加宽度 - 直接计算差值
+        const dx = e.clientX - startX;
+        newWidth = startWidth + dx;
+        console.log('右侧调整 - 原始宽度:', startWidth, '当前X:', e.clientX, 'dx:', dx, '新宽度:', newWidth);
+      } else if (resizeDirection === 'left') {
+        // 向左拖动，计算与起始点的差值
+        const dx = startX - e.clientX;
+        newWidth = startWidth + dx;
+        console.log('左侧调整 - 原始宽度:', startWidth, '当前X:', e.clientX, 'dx:', dx, '新宽度:', newWidth);
+      }
+      
+      // 限制最小和最大宽度 (增大到1200px)
+      if (newWidth < 300) {
+        console.log('应用最小宽度限制: 300px');
+        newWidth = 300;
+      } else if (newWidth > 1200) {
+        console.log('应用最大宽度限制: 1200px');
+        newWidth = 1200;
+      }
+      
+      console.log('最终应用宽度:', newWidth);
+      popup.style.width = `${newWidth}px`;
+      
+      // 对于左侧调整，需要同时改变位置
+      if (resizeDirection === 'left') {
+        // 修正左侧位置计算 - 宽度增加多少，左边界就要左移多少
+        const newLeft = startLeft - (newWidth - startWidth);
+        console.log('最终左侧位置:', newLeft, '位移量:', (newWidth - startWidth));
+        popup.style.left = `${newLeft}px`;
+      }
+      
+      // 即使超出边界也要阻止默认行为
+      e.preventDefault();
+      e.stopPropagation();
+    } else if (isDragging) {
       const dx = e.clientX - startX;
       const dy = e.clientY - startY;
       popup.style.left = `${initialX + dx}px`;
       popup.style.top = `${initialY + dy}px`;
+      
+      e.preventDefault();
+      e.stopPropagation();
     }
-  });
-
-  document.addEventListener('mouseup', () => {
-    isDragging = false;
-  });
-
-  // 修改关闭按钮事件
-  popup.querySelector('.translator-close-btn').addEventListener('click', () => {
-    // 发送清理请求的消息
-    chrome.runtime.sendMessage({ 
-      action: 'cleanup'
-    });
-    popup.remove();
-  });
-
+  };
+  
+  const mouseUpHandler = (e) => {
+    if (isResizing) {
+      isResizing = false;
+      resizeDirection = null;
+      popup.classList.remove('resizing-left');
+      popup.classList.remove('resizing-right');
+      // 在调整大小完成后保存弹窗状态
+      savePopupState(popup);
+      e.preventDefault();
+      e.stopPropagation();
+    }
+    if (isDragging) {
+      isDragging = false;
+      // 在拖动完成后保存弹窗状态
+      savePopupState(popup);
+    }
+  };
+  
+  document.addEventListener('mousemove', mouseMoveHandler, true);
+  document.addEventListener('mouseup', mouseUpHandler, true);
+  
   // 复制按钮事件
   popup.querySelector('.translator-copy-btn').addEventListener('click', () => {
     const translatedText = popup.querySelector('.translator-translated-text').textContent;
@@ -423,6 +615,12 @@ function initializePopupEvents(popup) {
         alert('复制失败，请重试');
       });
   });
+  
+  // 返回一个函数用于清理所有事件监听器
+  return function cleanup() {
+    document.removeEventListener('mousemove', mouseMoveHandler, true);
+    document.removeEventListener('mouseup', mouseUpHandler, true);
+  };
 }
 
 // 修改初始化逻辑，避免重复初始化
