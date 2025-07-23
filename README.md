@@ -1,3 +1,34 @@
+
+<div align="right">
+  <details>
+    <summary >🌐 Language</summary>
+    <div>
+      <div align="center">
+        <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=en">English</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=zh-CN">简体中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=zh-TW">繁體中文</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=ja">日本語</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=ko">한국어</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=hi">हिन्दी</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=th">ไทย</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=fr">Français</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=de">Deutsch</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=es">Español</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=it">Italiano</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=ru">Русский</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=pt">Português</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=nl">Nederlands</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=pl">Polski</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=ar">العربية</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=fa">فارسی</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=tr">Türkçe</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=vi">Tiếng Việt</a>
+        | <a href="https://openaitx.github.io/view.html?user=DemoJ&project=HumanizeText&lang=id">Bahasa Indonesia</a>
+      </div>
+    </div>
+  </details>
+</div>
+
 # 人话翻译器
 
 ## 项目简介
