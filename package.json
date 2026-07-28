@@ -1,6 +1,6 @@
 {
   "name": "humanizetext",
-  "version": "1.5.6",
+  "version": "1.3.0",
   "description": "人话翻译器 - 将专业术语翻译成通俗易懂的人话",
   "private": true,
   "type": "module",
