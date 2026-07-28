@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "人话翻译器",
-  "version": "1.2.4",
+  "version": "1.5.6",
   "description": "将专业术语翻译成通俗易懂的人话",
   "permissions": [
     "contextMenus",
@@ -31,7 +31,7 @@
     }
   ],
   "action": {
-    "default_popup": "popup/popup.html",
+    "default_title": "人话翻译器",
     "default_icon": {
       "48": "assets/icon.png"
     }
@@ -58,9 +58,21 @@
   "commands": {
     "translate-selection": {
       "suggested_key": {
-        "default": "Alt+H"
+        "default": "Alt+H",
+        "windows": "Alt+H",
+        "mac": "Alt+H",
+        "linux": "Alt+H"
       },
       "description": "翻译选中的文本"
+    },
+    "open-sidepanel": {
+      "suggested_key": {
+        "default": "Alt+S",
+        "windows": "Alt+S",
+        "mac": "Alt+S",
+        "linux": "Alt+S"
+      },
+      "description": "打开侧边栏翻译"
     }
   }
 }

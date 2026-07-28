@@ -1,52 +1,196 @@
+:root {
+	color-scheme: light dark;
+	--bg: #f4f5f7;
+	--surface: #ffffff;
+	--fg: #1a1a1a;
+	--muted: #6b7280;
+	--border: #e5e7eb;
+	--primary: #16a34a;
+	--primary-hover: #15803d;
+	--surface-2: #f3f4f6;
+	--radius: 12px;
+	--shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 16px rgba(0, 0, 0, 0.04);
+}
+
+@media (prefers-color-scheme: dark) {
+	:root {
+		--bg: #0f0f10;
+		--surface: #18181b;
+		--fg: #f3f4f6;
+		--muted: #9ca3af;
+		--border: #2e2e32;
+		--primary: #30d158;
+		--primary-hover: #28c44c;
+		--surface-2: #27272a;
+		--shadow: none;
+	}
+}
+
+* {
+	box-sizing: border-box;
+}
+
 body {
 	margin: 0;
-	padding: 20px;
-	font-family: system-ui, -apple-system, sans-serif;
-	background: #f5f5f5;
-	color: #333;
+	padding: 28px 20px 24px;
+	font-family: system-ui, -apple-system, "Segoe UI", "PingFang SC", "Microsoft YaHei", sans-serif;
+	background: var(--bg);
+	color: var(--fg);
+	line-height: 1.5;
+	font-size: 14px;
 }
 
-.container {
-	max-width: 600px;
+.page {
+	max-width: 640px;
 	margin: 0 auto;
-	background: white;
-	padding: 24px;
-	border-radius: 8px;
-	box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
 }
 
-h1 {
-	margin: 0 0 24px 0;
-	font-size: 24px;
-	color: #333;
+.page-header {
+	margin-bottom: 20px;
+}
+
+.page-brand {
+	display: flex;
+	align-items: flex-start;
+	gap: 12px;
+}
+
+.page-mark {
+	width: 10px;
+	height: 10px;
+	border-radius: 50%;
+	background: var(--primary);
+	margin-top: 8px;
+	flex-shrink: 0;
+}
+
+.page-header h1 {
+	margin: 0;
+	font-size: 22px;
+	font-weight: 650;
+	letter-spacing: -0.02em;
+	color: var(--fg);
+}
+
+.page-sub {
+	margin: 4px 0 0;
+	font-size: 13px;
+	color: var(--muted);
+}
+
+.settings-form {
+	display: flex;
+	flex-direction: column;
+	gap: 14px;
+}
+
+/* —— Cards —— */
+.card {
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: var(--shadow);
+	overflow: hidden;
+}
+
+.card-head {
+	padding: 16px 18px 0;
+}
+
+.card-title {
+	margin: 0;
+	font-size: 15px;
+	font-weight: 600;
+	letter-spacing: -0.01em;
+	color: var(--fg);
+}
+
+.card-desc {
+	margin: 4px 0 0;
+	font-size: 12.5px;
+	color: var(--muted);
+}
+
+.card-desc code {
+	font-size: 12px;
+	background: var(--surface-2);
+	padding: 1px 5px;
+	border-radius: 4px;
+}
+
+.card-body {
+	padding: 14px 18px 18px;
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+}
+
+.form-row {
+	display: grid;
+	grid-template-columns: 1fr 1fr;
+	gap: 14px;
+}
+
+@media (max-width: 560px) {
+	.form-row {
+		grid-template-columns: 1fr;
+	}
 }
 
 .form-group {
-	margin-bottom: 20px;
+	margin-bottom: 14px;
+}
+
+.form-group:last-child {
+	margin-bottom: 0;
 }
 
 label {
 	display: block;
-	margin-bottom: 8px;
+	margin-bottom: 6px;
 	font-weight: 500;
+	font-size: 13px;
+	color: var(--fg);
+}
+
+.checkbox-label {
+	display: flex;
+	align-items: center;
+	gap: 8px;
+	font-weight: 500;
+	cursor: pointer;
+	margin-bottom: 0;
+}
+
+.checkbox-label input {
+	width: auto;
+	margin: 0;
+	accent-color: var(--primary);
 }
 
 input[type="text"],
 input[type="password"],
 input[type="url"],
-select {
+input[type="number"],
+select,
+textarea {
 	width: 100%;
-	padding: 10px;
-	border: 1px solid #ddd;
-	border-radius: 6px;
+	padding: 10px 12px;
+	border: 1px solid var(--border);
+	border-radius: 8px;
 	font-size: 14px;
-	box-sizing: border-box;
+	background: var(--surface);
+	color: var(--fg);
+	font-family: inherit;
+	transition: border-color .15s, box-shadow .15s;
 }
 
 input:focus,
-select:focus {
+select:focus,
+textarea:focus {
 	outline: none;
-	border-color: #4caf50;
+	border-color: var(--primary);
+	box-shadow: 0 0 0 3px rgba(22, 163, 74, 0.12);
 }
 
 .input-group {
@@ -59,9 +203,10 @@ select:focus {
 }
 
 .help-text {
-	margin-top: 4px;
+	margin-top: 5px;
 	font-size: 12px;
-	color: #666;
+	color: var(--muted);
+	line-height: 1.45;
 }
 
 .range-group {
@@ -72,123 +217,188 @@ select:focus {
 
 input[type="range"] {
 	flex: 1;
+	accent-color: var(--primary);
 }
 
 #temperatureValue {
-	min-width: 36px;
+	min-width: 28px;
 	text-align: right;
-	color: #666;
+	color: var(--muted);
+	font-variant-numeric: tabular-nums;
+	font-size: 13px;
 }
 
-.button-group {
+.inline-actions {
 	display: flex;
-	justify-content: flex-end;
-	gap: 12px;
-	margin-top: 24px;
+	justify-content: flex-start;
+	margin-top: 4px;
 }
 
 .primary-btn,
 .secondary-btn {
-	padding: 10px 20px;
+	padding: 9px 16px;
 	border: none;
-	border-radius: 6px;
-	font-size: 14px;
+	border-radius: 8px;
+	font-size: 13px;
 	cursor: pointer;
 	font-weight: 500;
+	font-family: inherit;
+	transition: background .15s, opacity .15s;
 }
 
 .primary-btn {
-	background: #4caf50;
-	color: white;
+	background: var(--primary);
+	color: #fff;
 }
 
 .primary-btn:hover {
-	background: #45a049;
+	background: var(--primary-hover);
+}
+
+.primary-btn:disabled {
+	opacity: 0.55;
+	cursor: not-allowed;
 }
 
 .secondary-btn {
-	background: #f5f5f5;
-	color: #333;
+	background: var(--surface-2);
+	color: var(--fg);
+	border: 1px solid var(--border);
 }
 
 .secondary-btn:hover {
-	background: #e0e0e0;
+	background: var(--border);
 }
 
 .icon-btn {
 	background: none;
-	border: none;
-	color: #4caf50;
+	border: 1px solid var(--border);
+	color: var(--primary);
 	cursor: pointer;
-	padding: 10px;
-	font-size: 14px;
+	padding: 0 12px;
+	font-size: 13px;
+	border-radius: 8px;
+	font-family: inherit;
+	white-space: nowrap;
 }
 
 .icon-btn:hover {
-	text-decoration: underline;
-}
-
-.status-message {
-	margin-top: 10px;
-	padding: 8px;
-	border-radius: 4px;
-	font-size: 14px;
-	text-align: center;
-	transition: all 0.3s ease;
+	background: var(--surface-2);
 }
 
 #promptTemplate {
-	width: 100%;
 	resize: vertical;
-	min-height: 100px;
+	min-height: 96px;
+	line-height: 1.5;
 }
 
 .template-presets {
 	display: flex;
 	flex-wrap: wrap;
 	gap: 8px;
-	margin-top: 8px;
 }
 
 .preset-btn {
-	background-color: #f1f1f1;
-	border: 1px solid #ddd;
-	border-radius: 4px;
-	padding: 6px 10px;
-	font-size: 14px;
+	background: var(--surface-2);
+	border: 1px solid var(--border);
+	border-radius: 999px;
+	padding: 5px 12px;
+	font-size: 12.5px;
 	cursor: pointer;
+	color: var(--fg);
+	font-family: inherit;
+	transition: background .15s, border-color .15s;
 }
 
 .preset-btn:hover {
-	background-color: #e9e9e9;
+	border-color: var(--primary);
+	color: var(--primary);
 }
 
-/* 添加快捷键设置样式 */
+/* 快捷键 */
 .shortcut-info-box {
 	display: flex;
 	justify-content: space-between;
 	align-items: center;
-	background-color: #f5f5f5;
-	padding: 10px 15px;
-	border-radius: 6px;
-	margin-bottom: 8px;
+	gap: 12px;
+	background: var(--surface-2);
+	border: 1px solid var(--border);
+	padding: 12px 14px;
+	border-radius: 8px;
 }
 
-.shortcut-info-box #currentShortcut {
-	font-weight: bold;
-	background-color: #e9f5e9;
-	color: #4CAF50;
+.shortcut-list {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	flex: 1;
+	min-width: 0;
+}
+
+.shortcut-row {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	flex-wrap: wrap;
+}
+
+.shortcut-label {
+	font-size: 13px;
+	color: var(--muted);
+	min-width: 5.5em;
+}
+
+.shortcut-key {
+	font-weight: 600;
+	background: rgba(22, 163, 74, 0.1);
+	color: var(--primary);
 	padding: 3px 8px;
 	border-radius: 4px;
-	margin-left: 8px;
+	font-size: 12.5px;
+	font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
 }
 
 #changeShortcut {
-	padding: 6px 12px;
-	font-size: 13px;
-	background-color: #f0f0f0;
+	flex-shrink: 0;
 }
 
-#changeShortcut:hover {
-	background-color: #e6e6e6;
+/* 底部保存条：实体底栏，不透明 */
+.footer-bar {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	position: sticky;
+	bottom: 12px;
+	margin-top: 8px;
+	padding: 12px 14px;
+	background: var(--surface);
+	border: 1px solid var(--border);
+	border-radius: var(--radius);
+	box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.06), var(--shadow);
+	z-index: 10;
+}
+
+.status-message {
+	flex: 1;
+	min-width: 0;
+	min-height: 1.2em;
+	font-size: 13px;
+	color: var(--muted);
+	text-align: left;
+	line-height: 1.4;
+}
+
+.status-message:empty {
+	visibility: hidden;
+}
+
+[hidden] {
+	display: none !important;
+}
+
+@media (prefers-color-scheme: dark) {
+	.footer-bar {
+		box-shadow: 0 -4px 24px rgba(0, 0, 0, 0.35);
+	}
 }

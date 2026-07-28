@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>人话翻译器</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+
+<body>
+  <div class="app">
+    <header class="topbar">
+      <div class="brand">
+        <span class="brand-mark" aria-hidden="true"></span>
+        <span class="brand-name">人话翻译器</span>
+      </div>
+      <div class="topbar-actions">
+        <button type="button" id="historyBtn" class="chip-btn" title="历史记录">历史</button>
+        <button type="button" id="settingsBtn" class="chip-btn" title="设置">设置</button>
+      </div>
+    </header>
+
+    <main class="workspace" id="workspace">
+      <section class="empty-state" id="emptyState">
+        <p class="empty-title">把难懂的文字，说成人话</p>
+        <p class="empty-desc">粘贴或输入专业文本，或在网页选中后用右键 / 快捷键翻译</p>
+      </section>
+
+      <section class="thread" id="thread" hidden>
+        <div class="msg msg-source" id="sourceBlock">
+          <div class="msg-text" id="sourceDisplay"></div>
+          <button type="button" class="link-btn is-hidden" id="sourceExpand">展开</button>
+        </div>
+
+        <div class="msg msg-reasoning is-collapsed" id="reasoningBlock" hidden>
+          <button type="button" class="reasoning-toggle" id="reasoningToggle" aria-expanded="false">
+            <span class="chevron" aria-hidden="true">›</span>
+            <span class="reasoning-title" id="reasoningTitle">思考过程</span>
+            <span class="reasoning-hint" id="reasoningHint"></span>
+          </button>
+          <div class="msg-text reasoning-body" id="reasoningText"></div>
+        </div>
+
+        <div class="msg msg-answer">
+          <div class="msg-text answer-body" id="translatedText"></div>
+          <div class="status-line" id="statusLine" hidden></div>
+          <div class="result-actions" id="resultActions" hidden>
+            <button type="button" id="retryBtn" class="icon-action" title="重试" aria-label="重试">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <polyline points="23 4 23 10 17 10"></polyline>
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"></path>
+              </svg>
+            </button>
+            <button type="button" id="copyBtn" class="icon-action" title="复制" aria-label="复制">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect>
+                <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path>
+              </svg>
+            </button>
+          </div>
+        </div>
+      </section>
+    </main>
+
+    <footer class="composer">
+      <div class="composer-box">
+        <textarea id="sourceText" rows="3" placeholder="输入或粘贴要翻译的文本…"></textarea>
+        <div class="composer-bar">
+          <span class="char-meta"><span id="charCount">0</span> / 8000</span>
+          <div class="composer-actions">
+            <button type="button" id="primaryBtn" class="btn btn-primary" data-mode="idle">翻译</button>
+          </div>
+        </div>
+      </div>
+      <p class="composer-hint">Enter 发送 · Shift+Enter 换行</p>
+    </footer>
+
+    <aside class="drawer" id="historyDrawer" hidden>
+      <div class="drawer-header">
+        <button type="button" id="historyBack" class="icon-plain" aria-label="返回">←</button>
+        <h2>历史记录</h2>
+        <div class="drawer-tools">
+          <button type="button" id="exportHistory" class="chip-btn">导出</button>
+          <button type="button" id="importHistory" class="chip-btn">导入</button>
+          <button type="button" id="clearHistory" class="chip-btn danger">清空</button>
+        </div>
+      </div>
+      <div class="drawer-search">
+        <input type="search" id="historySearch" placeholder="搜索历史…">
+      </div>
+      <div class="drawer-list" id="historyList"></div>
+      <input type="file" id="importFile" accept=".json" hidden>
+    </aside>
+  </div>
+
+  <div id="toastHost" class="toast-host" aria-live="polite"></div>
+  <script src="sidepanel.js"></script>
+</body>
+
+</html>

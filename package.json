@@ -1,0 +1,22 @@
+{
+  "name": "humanizetext",
+  "version": "1.5.6",
+  "description": "人话翻译器 - 将专业术语翻译成通俗易懂的人话",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "node scripts/build.mjs",
+    "build:watch": "node scripts/build.mjs --watch"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/DemoJ/HumanizeText.git"
+  },
+  "license": "MIT",
+  "dependencies": {
+    "openai": "^7.0.0"
+  },
+  "devDependencies": {
+    "esbuild": "^0.28.1"
+  }
+}

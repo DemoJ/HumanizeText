@@ -2,119 +2,218 @@ document.addEventListener('DOMContentLoaded', () => {
   const form = document.getElementById('settingsForm');
   const apiKeyInput = document.getElementById('apiKey');
   const toggleApiKeyBtn = document.getElementById('toggleApiKey');
+  const providerSelect = document.getElementById('provider');
+  const baseUrlGroup = document.getElementById('baseUrlGroup');
   const baseUrlInput = document.getElementById('baseUrl');
   const modelInput = document.getElementById('model');
   const temperatureInput = document.getElementById('temperature');
   const temperatureValue = document.getElementById('temperatureValue');
+  const reasoningEffortInput = document.getElementById('reasoningEffort');
+  const floatButtonInput = document.getElementById('floatButton');
   const testBtn = document.getElementById('testBtn');
-  // 添加之前缺少的DOM元素引用
   const promptTemplateInput = document.getElementById('promptTemplate');
   const presetBtns = document.querySelectorAll('.preset-btn');
-  // 快捷键相关元素
   const currentShortcut = document.getElementById('currentShortcut');
+  const sidepanelShortcut = document.getElementById('sidepanelShortcut');
   const changeShortcutBtn = document.getElementById('changeShortcut');
 
-  const statusMessage = document.createElement('div');
-  statusMessage.className = 'status-message';
-  form.appendChild(statusMessage);
-
-  // 默认设置中添加提示词模板
-  const defaultSettings = {
-    baseUrl: 'https://api.deepseek.com/v1/chat/completions',
-    model: 'deepseek-reasoner',
-    temperature: 0.7,
-    promptTemplate: '用通俗易懂的中文解释以下内容：\n\n{text}'
+  const DEFAULT_SHORTCUTS = {
+    'translate-selection': 'Alt+H',
+    'open-sidepanel': 'Alt+S'
   };
 
-  // 加载保存的设置，优先从云端获取，失败时从本地获取
+  const statusMessage = document.getElementById('statusMessage')
+    || (() => {
+      const el = document.createElement('div');
+      el.className = 'status-message';
+      form.appendChild(el);
+      return el;
+    })();
+
+  const SETTING_KEYS = [
+    'apiKey', 'provider', 'baseUrl', 'model', 'temperature', 'promptTemplate',
+    'reasoningEffort', 'floatButton'
+  ];
+
+  const PROVIDERS = {
+    deepseek: {
+      baseUrl: 'https://api.deepseek.com',
+      model: 'deepseek-v4-flash',
+      reasoningEffort: 'none'
+    },
+    openai: {
+      baseUrl: 'https://api.openai.com/v1',
+      model: 'gpt-5.5',
+      reasoningEffort: 'none'
+    },
+    custom: {
+      baseUrl: '',
+      model: '',
+      reasoningEffort: 'none'
+    }
+  };
+
+  const defaultSettings = {
+    provider: 'deepseek',
+    baseUrl: PROVIDERS.deepseek.baseUrl,
+    model: PROVIDERS.deepseek.model,
+    temperature: 0.7,
+    promptTemplate: '用通俗易懂的中文解释以下内容：\n\n{text}',
+    reasoningEffort: 'none',
+    floatButton: true
+  };
+
+  /** 接受根地址、/v1、完整 chat/completions */
+  function normalizeBaseUrl(url) {
+    if (!url || typeof url !== 'string') return defaultSettings.baseUrl;
+    let normalized = url.trim().replace(/\/+$/, '');
+    normalized = normalized.replace(/\/chat\/completions\/?$/i, '');
+    normalized = normalized.replace(/\/+$/, '');
+    return normalized || defaultSettings.baseUrl;
+  }
+
+  function detectProvider(baseUrl) {
+    const norm = normalizeBaseUrl(baseUrl || '');
+    if (!norm) return 'custom';
+    if (norm === 'https://api.deepseek.com' || norm === 'https://api.deepseek.com/v1') {
+      return 'deepseek';
+    }
+    if (norm === 'https://api.openai.com' || norm === 'https://api.openai.com/v1') {
+      return 'openai';
+    }
+    return 'custom';
+  }
+
+  function syncBaseUrlVisibility() {
+    const isCustom = providerSelect.value === 'custom';
+    if (baseUrlGroup) {
+      baseUrlGroup.hidden = !isCustom;
+    }
+    if (!isCustom) {
+      const preset = PROVIDERS[providerSelect.value];
+      if (preset?.baseUrl) {
+        baseUrlInput.value = preset.baseUrl;
+      }
+    }
+  }
+
+  function applyProviderPreset(providerId, { fillModel = true } = {}) {
+    const preset = PROVIDERS[providerId];
+    if (!preset) return;
+    providerSelect.value = providerId;
+    if (providerId !== 'custom' && preset.baseUrl) {
+      baseUrlInput.value = preset.baseUrl;
+    }
+    if (fillModel && preset.model) {
+      modelInput.value = preset.model;
+    }
+    if (fillModel && reasoningEffortInput && preset.reasoningEffort) {
+      reasoningEffortInput.value = preset.reasoningEffort;
+    }
+    syncBaseUrlVisibility();
+  }
+
   async function loadSettings() {
     try {
-      // 尝试从云端获取设置
-      const syncSettings = await chrome.storage.sync.get(['apiKey', 'baseUrl', 'model', 'temperature', 'promptTemplate']);
-
+      const syncSettings = await chrome.storage.sync.get(SETTING_KEYS);
       if (Object.keys(syncSettings).length > 0) {
         applySettings(syncSettings);
-        console.log('从云端加载设置成功');
-        // 加载当前的快捷键信息
         loadShortcutInfo();
         return;
       }
 
-      // 如果云端没有设置，尝试从本地获取
-      console.log('云端没有设置，尝试从本地获取');
-      const localSettings = await chrome.storage.local.get(['apiKey', 'baseUrl', 'model', 'temperature', 'promptTemplate']);
-
+      const localSettings = await chrome.storage.local.get(SETTING_KEYS);
       if (Object.keys(localSettings).length > 0) {
         applySettings(localSettings);
-        console.log('从本地加载设置成功');
-        // 加载当前的快捷键信息
         loadShortcutInfo();
         return;
       }
 
-      // 如果本地也没有，使用默认设置
       applySettings(defaultSettings);
-      console.log('使用默认设置');
-      // 加载当前的快捷键信息
       loadShortcutInfo();
     } catch (error) {
-      console.error('从云端加载设置失败，尝试从本地获取:', error);
-
+      console.error('加载设置失败:', error);
       try {
-        // 尝试从本地获取设置
-        const localSettings = await chrome.storage.local.get(['apiKey', 'baseUrl', 'model', 'temperature', 'promptTemplate']);
-
+        const localSettings = await chrome.storage.local.get(SETTING_KEYS);
         if (Object.keys(localSettings).length > 0) {
           applySettings(localSettings);
-          console.log('从本地加载设置成功');
-          // 加载当前的快捷键信息
           loadShortcutInfo();
           return;
         }
-      } catch (localError) {
-        console.error('从本地加载设置也失败:', localError);
-      }
-
-      // 如果都失败了，使用默认设置
+      } catch (_) { /* ignore */ }
       applySettings(defaultSettings);
-      console.log('使用默认设置');
-      // 加载当前的快捷键信息
       loadShortcutInfo();
     }
   }
 
-  // 加载当前快捷键信息
+  function formatShortcut(commandName, actual) {
+    if (actual) return actual;
+    const fallback = DEFAULT_SHORTCUTS[commandName];
+    return fallback ? `${fallback}（建议，当前未绑定）` : '未设置';
+  }
+
   async function loadShortcutInfo() {
     try {
-      // 获取当前快捷键配置
       const commands = await chrome.commands.getAll();
       const translateCommand = commands.find(command => command.name === 'translate-selection');
-      if (translateCommand && translateCommand.shortcut && currentShortcut) {
-        currentShortcut.textContent = translateCommand.shortcut;
+      const sidepanelCommand = commands.find(command => command.name === 'open-sidepanel');
+      if (currentShortcut) {
+        currentShortcut.textContent = formatShortcut(
+          'translate-selection',
+          translateCommand?.shortcut
+        );
+      }
+      if (sidepanelShortcut) {
+        sidepanelShortcut.textContent = formatShortcut(
+          'open-sidepanel',
+          sidepanelCommand?.shortcut
+        );
       }
     } catch (error) {
       console.error('获取快捷键信息失败:', error);
+      if (currentShortcut) currentShortcut.textContent = DEFAULT_SHORTCUTS['translate-selection'];
+      if (sidepanelShortcut) sidepanelShortcut.textContent = DEFAULT_SHORTCUTS['open-sidepanel'];
     }
   }
 
-  // 应用设置到表单
   function applySettings(settings) {
     apiKeyInput.value = settings.apiKey || '';
-    baseUrlInput.value = settings.baseUrl || defaultSettings.baseUrl;
-    modelInput.value = settings.model || defaultSettings.model;
-    temperatureInput.value = settings.temperature || defaultSettings.temperature;
-    temperatureValue.textContent = temperatureInput.value;
 
-    // 确保promptTemplateInput存在再设置值
+    const baseUrl = settings.baseUrl
+      ? normalizeBaseUrl(settings.baseUrl)
+      : defaultSettings.baseUrl;
+    baseUrlInput.value = baseUrl;
+
+    const provider = settings.provider && PROVIDERS[settings.provider]
+      ? settings.provider
+      : detectProvider(baseUrl);
+    providerSelect.value = provider;
+
+    modelInput.value = settings.model || defaultSettings.model;
+    temperatureInput.value = settings.temperature ?? defaultSettings.temperature;
+    temperatureValue.textContent = temperatureInput.value;
+    if (reasoningEffortInput) {
+      reasoningEffortInput.value = settings.reasoningEffort || defaultSettings.reasoningEffort;
+    }
+    if (floatButtonInput) {
+      floatButtonInput.checked = settings.floatButton !== false;
+    }
     if (promptTemplateInput) {
       promptTemplateInput.value = settings.promptTemplate || defaultSettings.promptTemplate;
     }
+    syncBaseUrlVisibility();
   }
 
-  // 加载设置
+  function resolveBaseUrlForSave() {
+    const provider = providerSelect.value;
+    if (provider !== 'custom' && PROVIDERS[provider]?.baseUrl) {
+      return normalizeBaseUrl(PROVIDERS[provider].baseUrl);
+    }
+    return normalizeBaseUrl(baseUrlInput.value.trim() || defaultSettings.baseUrl);
+  }
+
   loadSettings();
 
-  // 切换 API Key 显示/隐藏
   toggleApiKeyBtn.addEventListener('click', () => {
     if (apiKeyInput.type === 'password') {
       apiKeyInput.type = 'text';
@@ -125,123 +224,111 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 更新温度值显示
   temperatureInput.addEventListener('input', (e) => {
     temperatureValue.textContent = e.target.value;
   });
 
-  // 预设模板点击事件 - 添加空值检查
   if (presetBtns && presetBtns.length > 0) {
     presetBtns.forEach(btn => {
       btn.addEventListener('click', () => {
         if (promptTemplateInput) {
-          const template = btn.dataset.template;
-          promptTemplateInput.value = template;
+          promptTemplateInput.value = btn.dataset.template;
         }
       });
     });
   }
 
-  // 修改快捷键按钮
+  providerSelect.addEventListener('change', () => {
+    const id = providerSelect.value;
+    if (id === 'custom') {
+      // 切到自定义：保留当前地址便于改，不强制清空
+      if (!baseUrlInput.value.trim()) {
+        baseUrlInput.value = defaultSettings.baseUrl;
+      }
+      syncBaseUrlVisibility();
+      statusMessage.textContent = '已切换为自定义，请填写 Base URL 后保存';
+      statusMessage.style.color = 'green';
+      return;
+    }
+    applyProviderPreset(id, { fillModel: true });
+    statusMessage.textContent = `已切换为 ${providerSelect.options[providerSelect.selectedIndex].text}，请保存设置`;
+    statusMessage.style.color = 'green';
+  });
+
   if (changeShortcutBtn) {
     changeShortcutBtn.addEventListener('click', () => {
-      // 打开chrome://extensions/shortcuts 页面
+      const isFirefox = navigator.userAgent.includes('Firefox');
       chrome.tabs.create({
-        url: 'chrome://extensions/shortcuts'
+        url: isFirefox ? 'about:addons' : 'chrome://extensions/shortcuts'
       });
-      
-      // 显示提示消息
-      const statusMessage = document.createElement('div');
-      statusMessage.className = 'status-message';
-      statusMessage.id = 'shortcut_status_message';
-      statusMessage.textContent = '修改快捷键后，请切换回此标签页，系统将自动检测并更新';
+
+      statusMessage.textContent = isFirefox
+        ? '请在扩展管理页中找到本扩展并设置快捷键，然后切回本页'
+        : '修改快捷键后，请切换回此标签页，系统将自动检测并更新';
       statusMessage.style.color = 'orange';
-      statusMessage.style.marginTop = '10px';
-      
-      // 防止重复添加提示
-      const existingMessage = document.querySelector('#shortcut_status_message');
-      if (existingMessage) {
-        existingMessage.textContent = statusMessage.textContent;
-        existingMessage.style.color = statusMessage.style.color;
-      } else {
-        const shortcutBox = document.getElementById('shortcutInfo');
-        if (shortcutBox) {
-          shortcutBox.parentNode.appendChild(statusMessage);
-        } else {
-          form.appendChild(statusMessage);
-        }
-      }
     });
   }
 
-  // 添加窗口获焦时检查快捷键更新
   window.addEventListener('focus', () => {
-    // 当窗口重新获得焦点时，检查快捷键是否更新
-    console.log('检查快捷键是否已更新');
-    
-    // 重新获取当前快捷键
-    chrome.commands.getAll(async (commands) => {
+    chrome.commands.getAll((commands) => {
       const translateCommand = commands.find(command => command.name === 'translate-selection');
-      const currentShortcut = translateCommand && translateCommand.shortcut ? translateCommand.shortcut : '';
-      
-      // 从存储中获取上次保存的快捷键
+      const sidepanelCommand = commands.find(command => command.name === 'open-sidepanel');
+      const shortcut = translateCommand?.shortcut || '';
+
+      if (currentShortcut) {
+        currentShortcut.textContent = formatShortcut('translate-selection', translateCommand?.shortcut);
+      }
+      if (sidepanelShortcut) {
+        sidepanelShortcut.textContent = formatShortcut('open-sidepanel', sidepanelCommand?.shortcut);
+      }
+
       chrome.storage.local.get('saved_shortcut', (data) => {
         const savedShortcut = data.saved_shortcut || '';
-        console.log('当前快捷键:', currentShortcut, '保存的快捷键:', savedShortcut);
-        
-        // 快捷键有变化时更新
-        if (currentShortcut !== savedShortcut) {
-          console.log('检测到快捷键变化，保存并通知更新');
-          
-          // 保存新快捷键
-          chrome.storage.local.set({ 'saved_shortcut': currentShortcut }, () => {
-            // 通知background更新右键菜单
-            chrome.runtime.sendMessage({ 
-              action: 'shortcutChanged',
-              oldShortcut: savedShortcut,
-              newShortcut: currentShortcut
-            }, response => {
-              if (response && response.success) {
-                // 更新成功
-                console.log('右键菜单已更新');
-                
-                // 更新页面显示的快捷键
-                const currentShortcutEl = document.getElementById('currentShortcut');
-                if (currentShortcutEl) {
-                  currentShortcutEl.textContent = currentShortcut || '无';
-                }
-                
-                // 更新状态消息
-                const statusMessage = document.querySelector('#shortcut_status_message');
-                if (statusMessage) {
-                  statusMessage.textContent = '快捷键已更新，右键菜单已刷新';
-                  statusMessage.style.color = 'green';
-                  
-                  // 5秒后隐藏消息
-                  setTimeout(() => {
-                    if (statusMessage.parentNode) {
-                      statusMessage.parentNode.removeChild(statusMessage);
-                    }
-                  }, 5000);
-                }
+        if (shortcut === savedShortcut) return;
+
+        chrome.storage.local.set({ saved_shortcut: shortcut }, () => {
+          chrome.runtime.sendMessage({
+            action: 'shortcutChanged',
+            oldShortcut: savedShortcut,
+            newShortcut: shortcut
+          }, (response) => {
+            if (response?.success) {
+              // already refreshed UI above
+            }
+            statusMessage.textContent = '快捷键已更新，右键菜单已刷新';
+            statusMessage.style.color = 'green';
+            setTimeout(() => {
+              if (statusMessage.textContent === '快捷键已更新，右键菜单已刷新') {
+                statusMessage.textContent = '';
               }
-            });
+            }, 5000);
           });
-        }
+        });
       });
     });
   });
 
-  // 保存设置
   form.addEventListener('submit', async (e) => {
     e.preventDefault();
 
+    const provider = providerSelect.value;
+    if (provider === 'custom' && !baseUrlInput.value.trim()) {
+      statusMessage.textContent = '自定义服务商请填写 Base URL';
+      statusMessage.style.color = 'red';
+      return;
+    }
+
     const settings = {
       apiKey: apiKeyInput.value.trim(),
-      baseUrl: baseUrlInput.value.trim() || defaultSettings.baseUrl,
-      model: modelInput.value,
+      provider,
+      baseUrl: resolveBaseUrlForSave(),
+      model: modelInput.value.trim() || defaultSettings.model,
       temperature: parseFloat(temperatureInput.value),
-      promptTemplate: promptTemplateInput ? promptTemplateInput.value : defaultSettings.promptTemplate
+      promptTemplate: promptTemplateInput
+        ? promptTemplateInput.value
+        : defaultSettings.promptTemplate,
+      reasoningEffort: reasoningEffortInput?.value || defaultSettings.reasoningEffort,
+      floatButton: floatButtonInput ? floatButtonInput.checked : true
     };
 
     const saveBtn = form.querySelector('button[type="submit"]');
@@ -250,14 +337,8 @@ document.addEventListener('DOMContentLoaded', () => {
     statusMessage.textContent = '';
 
     try {
-      // 先保存到本地
       await chrome.storage.local.set(settings);
-      console.log('设置已保存到本地存储');
-
-      // 再尝试保存到云端
       await chrome.storage.sync.set(settings);
-      console.log('设置已同步到云端存储');
-
       saveBtn.textContent = '已保存';
       statusMessage.textContent = '设置已保存到本地和云端';
       statusMessage.style.color = 'green';
@@ -275,46 +356,53 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  // 测试连接
   testBtn.addEventListener('click', async () => {
     const apiKey = apiKeyInput.value.trim();
-    const baseUrl = baseUrlInput.value.trim() || defaultSettings.baseUrl;
-    const model = modelInput.value;
+    const baseUrl = resolveBaseUrlForSave();
+    const model = modelInput.value.trim() || defaultSettings.model;
 
     if (!apiKey) {
-      alert('请先输入 API Key');
+      statusMessage.textContent = '请先输入 API Key';
+      statusMessage.style.color = 'red';
+      return;
+    }
+
+    if (providerSelect.value === 'custom' && !baseUrlInput.value.trim()) {
+      statusMessage.textContent = '自定义服务商请填写 Base URL';
+      statusMessage.style.color = 'red';
       return;
     }
 
     testBtn.disabled = true;
     testBtn.textContent = '测试中...';
+    statusMessage.textContent = '';
 
     try {
-      const response = await fetch(baseUrl, {
+      const endpoint = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
+      const response = await fetch(endpoint, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${apiKey}`
         },
         body: JSON.stringify({
-          model: model,
-          messages: [{
-            role: 'user',
-            content: '测试消息'
-          }],
-          temperature: 0.7
+          model,
+          messages: [{ role: 'user', content: 'ping' }],
+          temperature: 0,
+          max_tokens: 8
         })
       });
 
-      const data = await response.json();
-
-      if (response.ok && data.choices) {
-        alert('连接测试成功！');
+      const data = await response.json().catch(() => ({}));
+      if (response.ok && (data.choices || data.id)) {
+        statusMessage.textContent = '连接测试成功';
+        statusMessage.style.color = 'green';
       } else {
-        throw new Error(data.error?.message || '未知错误');
+        throw new Error(data.error?.message || `HTTP ${response.status}`);
       }
     } catch (error) {
-      alert('连接测试失败：' + error.message);
+      statusMessage.textContent = '连接测试失败：' + error.message;
+      statusMessage.style.color = 'red';
     } finally {
       testBtn.disabled = false;
       testBtn.textContent = '测试连接';

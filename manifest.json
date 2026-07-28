@@ -1,14 +1,15 @@
 {
   "manifest_version": 3,
   "name": "人话翻译器",
-  "version": "1.2.4",
+  "version": "1.3.0",
   "description": "将专业术语翻译成通俗易懂的人话",
   "permissions": [
     "contextMenus",
     "storage",
     "scripting",
     "activeTab",
-    "management"
+    "management",
+    "sidePanel"
   ],
   "host_permissions": [
     "<all_urls>"
@@ -29,7 +30,7 @@
     }
   ],
   "action": {
-    "default_popup": "popup/popup.html",
+    "default_title": "人话翻译器",
     "default_icon": {
       "48": "assets/icon.png"
     }
@@ -38,6 +39,9 @@
     "48": "assets/icon.png"
   },
   "options_page": "options/options.html",
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
   "web_accessible_resources": [
     {
       "resources": [
@@ -56,9 +60,23 @@
   "commands": {
     "translate-selection": {
       "suggested_key": {
-        "default": "Alt+H"
+        "default": "Alt+H",
+        "windows": "Alt+H",
+        "mac": "Alt+H",
+        "chromeos": "Alt+H",
+        "linux": "Alt+H"
       },
       "description": "翻译选中的文本"
+    },
+    "open-sidepanel": {
+      "suggested_key": {
+        "default": "Alt+S",
+        "windows": "Alt+S",
+        "mac": "Alt+S",
+        "chromeos": "Alt+S",
+        "linux": "Alt+S"
+      },
+      "description": "打开侧边栏翻译"
     }
   }
 }
