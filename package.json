@@ -6,7 +6,8 @@
   "type": "module",
   "scripts": {
     "build": "node scripts/build.mjs",
-    "build:watch": "node scripts/build.mjs --watch"
+    "build:watch": "node scripts/build.mjs --watch",
+    "package": "node scripts/package.mjs"
   },
   "repository": {
     "type": "git",

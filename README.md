@@ -26,9 +26,10 @@
 ```bash
 npm install
 npm run build          # 打包 background.js（OpenAI SDK）
+npm run package        # 构建 + 打 zip + 校验清单 → release/
 ```
 
-在 `chrome://extensions` 加载本目录（需先 build）。
+在 `chrome://extensions` 加载本目录（需先 build）。发版 zip 在 `release/`。
 
 ## 结构
 
