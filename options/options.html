@@ -59,6 +59,7 @@
 
           <div class="inline-actions">
             <button type="button" id="testBtn" class="secondary-btn">测试连接</button>
+            <span id="testResult" class="test-result" role="status"></span>
           </div>
         </div>
       </section>
@@ -160,9 +161,11 @@
       </section>
 
       <div class="footer-bar">
+        <button type="button" id="resetBtn" class="text-btn">恢复默认</button>
         <div id="statusMessage" class="status-message" role="status"></div>
-        <button type="submit" class="primary-btn">保存设置</button>
+        <button type="submit" class="primary-btn save-btn">保存设置</button>
       </div>
+      <div id="dirtyHint" class="dirty-hint" hidden>有未保存的修改，请在底部点击「保存设置」</div>
     </form>
   </div>
   <script src="options.js"></script>

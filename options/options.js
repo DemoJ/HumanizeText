@@ -11,6 +11,7 @@ document.addEventListener('DOMContentLoaded', () => {
   const reasoningEffortInput = document.getElementById('reasoningEffort');
   const floatButtonInput = document.getElementById('floatButton');
   const testBtn = document.getElementById('testBtn');
+  const resetBtn = document.getElementById('resetBtn');
   const promptTemplateInput = document.getElementById('promptTemplate');
   const presetBtns = document.querySelectorAll('.preset-btn');
   const currentShortcut = document.getElementById('currentShortcut');
@@ -29,6 +30,24 @@ document.addEventListener('DOMContentLoaded', () => {
       form.appendChild(el);
       return el;
     })();
+
+  const testResult = document.getElementById('testResult');
+  const footerBar = document.querySelector('.footer-bar');
+  const dirtyHint = document.getElementById('dirtyHint');
+
+  function setTestResult(text, type = '') {
+    if (!testResult) return;
+    testResult.textContent = text;
+    testResult.className = 'test-result' + (type ? ` ${type}` : '');
+  }
+
+  function setDirty(dirty) {
+    if (!footerBar) return;
+    footerBar.classList.toggle('dirty', dirty);
+    if (dirtyHint) dirtyHint.hidden = !dirty;
+  }
+
+  let cleanSnapshot = '';
 
   const SETTING_KEYS = [
     'apiKey', 'provider', 'baseUrl', 'model', 'temperature', 'promptTemplate',
@@ -212,7 +231,29 @@ document.addEventListener('DOMContentLoaded', () => {
     return normalizeBaseUrl(baseUrlInput.value.trim() || defaultSettings.baseUrl);
   }
 
-  loadSettings();
+  loadSettings().finally(() => {
+    cleanSnapshot = serializeForm();
+  });
+
+  function serializeForm() {
+    return JSON.stringify({
+      apiKey: apiKeyInput.value,
+      provider: providerSelect.value,
+      baseUrl: baseUrlInput.value,
+      model: modelInput.value,
+      temperature: temperatureInput.value,
+      reasoningEffort: reasoningEffortInput ? reasoningEffortInput.value : '',
+      floatButton: floatButtonInput ? floatButtonInput.checked : false,
+      promptTemplate: promptTemplateInput ? promptTemplateInput.value : ''
+    });
+  }
+
+  function checkDirty() {
+    setDirty(serializeForm() !== cleanSnapshot);
+  }
+
+  form.addEventListener('input', checkDirty);
+  form.addEventListener('change', checkDirty);
 
   toggleApiKeyBtn.addEventListener('click', () => {
     if (apiKeyInput.type === 'password') {
@@ -233,6 +274,7 @@ document.addEventListener('DOMContentLoaded', () => {
       btn.addEventListener('click', () => {
         if (promptTemplateInput) {
           promptTemplateInput.value = btn.dataset.template;
+          checkDirty();
         }
       });
     });
@@ -342,11 +384,15 @@ document.addEventListener('DOMContentLoaded', () => {
       saveBtn.textContent = '已保存';
       statusMessage.textContent = '设置已保存到本地和云端';
       statusMessage.style.color = 'green';
+      cleanSnapshot = serializeForm();
+      setDirty(false);
     } catch (error) {
       console.error('保存设置到云端失败:', error);
       saveBtn.textContent = '已保存(仅本地)';
       statusMessage.textContent = '设置已保存到本地，但同步到云端失败';
       statusMessage.style.color = 'orange';
+      cleanSnapshot = serializeForm();
+      setDirty(false);
     } finally {
       setTimeout(() => {
         saveBtn.disabled = false;
@@ -356,26 +402,34 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
+  if (resetBtn) {
+    resetBtn.addEventListener('click', () => {
+      applySettings(defaultSettings);
+      setTestResult('');
+      statusMessage.textContent = '已恢复为默认设置，请点击「保存设置」生效';
+      statusMessage.style.color = 'orange';
+      checkDirty();
+    });
+  }
+
   testBtn.addEventListener('click', async () => {
     const apiKey = apiKeyInput.value.trim();
     const baseUrl = resolveBaseUrlForSave();
     const model = modelInput.value.trim() || defaultSettings.model;
 
     if (!apiKey) {
-      statusMessage.textContent = '请先输入 API Key';
-      statusMessage.style.color = 'red';
+      setTestResult('请先输入 API Key', 'error');
       return;
     }
 
     if (providerSelect.value === 'custom' && !baseUrlInput.value.trim()) {
-      statusMessage.textContent = '自定义服务商请填写 Base URL';
-      statusMessage.style.color = 'red';
+      setTestResult('自定义服务商请填写 Base URL', 'error');
       return;
     }
 
     testBtn.disabled = true;
     testBtn.textContent = '测试中...';
-    statusMessage.textContent = '';
+    setTestResult('正在测试连接…', 'testing');
 
     try {
       const endpoint = `${baseUrl.replace(/\/+$/, '')}/chat/completions`;
@@ -395,14 +449,12 @@ document.addEventListener('DOMContentLoaded', () => {
 
       const data = await response.json().catch(() => ({}));
       if (response.ok && (data.choices || data.id)) {
-        statusMessage.textContent = '连接测试成功';
-        statusMessage.style.color = 'green';
+        setTestResult('连接测试成功', 'success');
       } else {
         throw new Error(data.error?.message || `HTTP ${response.status}`);
       }
     } catch (error) {
-      statusMessage.textContent = '连接测试失败：' + error.message;
-      statusMessage.style.color = 'red';
+      setTestResult('连接测试失败：' + error.message, 'error');
     } finally {
       testBtn.disabled = false;
       testBtn.textContent = '测试连接';
